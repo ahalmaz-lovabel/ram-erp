@@ -11,3 +11,26 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ===== SHARED: AUDIT =====
+// سجل التدقيق المالي/الإداري: "مين عمل إيه" على مستوى العمل نفسه.
+// منفصل تمامًا عن السجلات التقنية (logger/Pino). كل عملية حساسة
+// (إنشاء، تعديل، اعتماد، إلغاء، أرشفة) تُسجَّل هنا عبر recordAuditLog().
+model AuditLog {
+  id       String  @id @default(cuid())
+  // معرف المستخدم اللي نفّذ العملية. String دلوقتي (بدون FK) لأن موديول
+  // users لسه ما اتبناش — تتحوّل لعلاقة فعلية مع User وقت بناء users.
+  userId   String
+  module   String // اسم الموديول (users, invoices, inventory...)
+  action   String // نوع العملية (create, update, approve, archive, cancel...)
+  entityId String? // معرف الكيان المتأثر (لو ينطبق)
+  oldValue Json? // snapshot للقيمة قبل التعديل
+  newValue Json? // snapshot للقيمة بعد التعديل
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([module, action])
+  @@index([entityId])
+  @@index([createdAt])
+}
