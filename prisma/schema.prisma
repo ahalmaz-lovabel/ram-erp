@@ -34,3 +34,129 @@ model AuditLog {
   @@index([entityId])
   @@index([createdAt])
 }
+
+// ===== USERS =====
+// موديول المستخدمين والأدوار والصلاحيات. مبني على docs/analysis/users-analysis.md
+// مبدأ أساسي: المنع الافتراضي — لا صلاحية إلا إذا مُنحت صراحة.
+
+// القسم/الإدارة التابع لها المستخدم أو الدور (تحليل §3، §5).
+enum Department {
+  sales // مبيعات
+  accounts // حسابات
+  warehouse // مخازن
+  production // إنتاج
+  purchasing // مشتريات
+  management // إدارة
+  shipping // شحن وتركيب
+  website // موقع إلكتروني ومحتوى
+}
+
+// حالة حساب المستخدم (تحليل §3، §10).
+enum UserStatus {
+  active // نشط
+  suspended // موقوف مؤقتًا (يمنع الدخول مع الاحتفاظ بالسجلات)
+  locked // مقفل أمنيًا (محاولات دخول فاشلة أو اشتباه اختراق)
+  archived // مؤرشف (موظف سابق/غير نشط)
+}
+
+// حالة الدور (تحليل §5).
+enum RoleStatus {
+  active // نشط
+  suspended // موقوف
+  archived // مؤرشف
+}
+
+// مستوى سلطة الدور (تحليل §4). المالك أعلى سلطة وخفي ومحمي، ومدير النظام
+// واسع الصلاحيات دون امتلاك كامل، وبقية الأدوار تشغيلية.
+enum RoleLevel {
+  owner // مالك النظام
+  admin // مدير النظام
+  standard // دور تشغيلي عادي
+}
+
+// نوع الاستثناء على مستوى المستخدم (تحليل §11): منح إضافي أو سحب استثنائي.
+enum PermissionEffect {
+  grant // صلاحية إضافية ممنوحة مباشرة للمستخدم فوق دوره
+  revoke // صلاحية مسحوبة من المستخدم رغم وجودها في دوره
+}
+
+// الدور: قالب صلاحيات يُربط بالمستخدمين (تحليل §5).
+model Role {
+  id          String      @id @default(cuid())
+  name        String      @unique // اسم الدور، مثل "موظف مبيعات"
+  key         String      @unique // معرّف ثابت (slug)، مثل "sales-rep"
+  description String? // وصف الدور والغرض منه
+  department  Department? // القسم المرتبط بالدور إن وجد
+  level       RoleLevel   @default(standard)
+  isSystem    Boolean     @default(false) // نظامي ثابت أم دور مخصص أنشأته الإدارة
+  status      RoleStatus  @default(active)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  permissions RolePermission[]
+  users       User[]
+
+  @@index([status])
+  @@index([level])
+  @@index([department])
+}
+
+// ربط دور بمفتاح صلاحية واحد (تحليل §5، §6).
+model RolePermission {
+  id            String   @id @default(cuid())
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionKey String // مفتاح الصلاحية، مثل "invoices.approve"
+  createdAt     DateTime @default(now())
+
+  @@unique([roleId, permissionKey])
+  @@index([roleId])
+  @@index([permissionKey])
+}
+
+// المستخدم: حساب دخول مستقل (تحليل §3).
+model User {
+  id           String      @id @default(cuid())
+  fullName     String // الاسم الكامل
+  email        String      @unique // بريد/اسم مستخدم للدخول
+  phone        String?
+  whatsapp     String?
+  department   Department? // القسم أو الإدارة
+  jobTitle     String? // المسمى الوظيفي
+  roleId       String // الدور الأساسي
+  role         Role        @relation(fields: [roleId], references: [id])
+  status       UserStatus  @default(active)
+  // مالك النظام: خفي من القوائم العادية ومحمي من أي تعديل/إيقاف من غيره (تحليل §4).
+  isSystemOwner Boolean    @default(false)
+
+  passwordHash         String // كلمة المرور مشفّرة — ممنوع حفظها كنص صريح (تحليل §13)
+  mustChangePassword   Boolean   @default(true) // إجبار تغيير كلمة المرور عند أول دخول
+  lastLoginAt          DateTime?
+  lastPasswordChangeAt DateTime?
+  adminNotes           String? // ملاحظات إدارية داخلية
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  directPermissions UserPermissionGrant[]
+
+  @@index([roleId])
+  @@index([status])
+  @@index([department])
+}
+
+// استثناء صلاحية على مستوى مستخدم واحد (تحليل §11): منح إضافي أو سحب.
+// السبب المكتوب مطلوب للعمليات الحساسة (تحليل §11، §15، §21).
+model UserPermissionGrant {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissionKey   String
+  effect          PermissionEffect
+  reason          String? // سبب مكتوب (مطلوب للصلاحيات الحساسة)
+  createdByUserId String? // مين منح/سحب الصلاحية
+  createdAt       DateTime         @default(now())
+
+  @@unique([userId, permissionKey])
+  @@index([userId])
+}

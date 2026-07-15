@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { AppError, isAppError, CommonErrorCodes } from "./AppError";
+import { isAppError, CommonErrorCodes } from "./AppError";
 import { logger } from "../logger";
 
 export interface ActionResult<T> {
