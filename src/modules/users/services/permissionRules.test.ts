@@ -3,6 +3,7 @@ import {
   computeEffectivePermissions,
   assertCanManageTarget,
   assertPermissionKeyIsKnown,
+  assertRoleAssignable,
   type EffectiveInput,
 } from "./permissionRules";
 import { isAppError } from "@/modules/shared/errors/AppError";
@@ -130,6 +131,26 @@ describe("assertPermissionKeyIsKnown", () => {
       expect(isAppError(err)).toBe(true);
       if (isAppError(err)) expect(err.code).toBe(UsersErrorCodes.UNKNOWN_PERMISSION);
     }
+  });
+});
+
+describe("assertRoleAssignable — منع تصعيد الصلاحيات (§4، §21)", () => {
+  it("يسمح بإسناد دور تشغيلي (standard)", () => {
+    expect(() => assertRoleAssignable("standard")).not.toThrow();
+  });
+
+  it("يرفض إسناد دور بمستوى owner", () => {
+    expect.assertions(2);
+    try {
+      assertRoleAssignable("owner");
+    } catch (err) {
+      expect(isAppError(err)).toBe(true);
+      if (isAppError(err)) expect(err.code).toBe(UsersErrorCodes.ROLE_LEVEL_NOT_ASSIGNABLE);
+    }
+  });
+
+  it("يرفض إسناد دور بمستوى admin", () => {
+    expect(() => assertRoleAssignable("admin")).toThrow();
   });
 });
 

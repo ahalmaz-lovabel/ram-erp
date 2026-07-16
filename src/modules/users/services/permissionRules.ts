@@ -60,6 +60,23 @@ export function assertCanManageTarget(
   }
 }
 
+/**
+ * يمنع ربط دور بمستوى امتياز عالٍ (مالك/مدير نظام) عبر مسار إدارة المستخدمين
+ * العادي (تحليل §4، §21). دور بمستوى `owner` يمنح كل الصلاحيات في
+ * computeEffectivePermissions، لذا لا يجوز إسناده عبر create/update user —
+ * حسابات المالك/مدير النظام تُدار عبر مسار مخصّص (seed منفصل، خارج نطاق الدفعة).
+ */
+export function assertRoleAssignable(roleLevel: RoleLevel): void {
+  if (roleLevel !== "standard") {
+    throw new AppError(
+      UsersErrorCodes.ROLE_LEVEL_NOT_ASSIGNABLE,
+      "لا يمكن إسناد دور بمستوى مالك أو مدير نظام عبر إدارة المستخدمين",
+      403,
+      { roleLevel }
+    );
+  }
+}
+
 /** يتأكد إن مفتاح الصلاحية معروف ومسجّل قبل منحه/سحبه أو ربطه بدور. */
 export function assertPermissionKeyIsKnown(
   permissionKey: string,

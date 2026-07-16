@@ -10,25 +10,29 @@ export {
   computeEffectivePermissions,
   assertCanManageTarget,
   assertPermissionKeyIsKnown,
+  assertRoleAssignable,
 } from "./permissionRules";
 
 /**
- * الـ resolver اللي بيتحقن في shared/permissions عبر setPermissionResolver.
- * `requirePermission()` بيعتمد عليه لمعرفة صلاحيات المستخدم الفعّالة.
+ * تحميل موحّد لبيانات المستخدم اللازمة لحساب الصلاحيات (الدور + صلاحياته +
+ * الاستثناءات المباشرة). مصدر واحد يستخدمه الـ resolver والـ breakdown معًا
+ * حتى لا يتفرّعا ويختلفا.
  */
-export async function resolveUserPermissions(userId: string): Promise<Set<string>> {
-  const user = await prisma.user.findUnique({
+async function loadUserPermissionData(userId: string) {
+  return prisma.user.findUnique({
     where: { id: userId },
     include: {
       role: { include: { permissions: true } },
       directPermissions: true,
     },
   });
+}
 
-  // مستخدم غير معروف ⇐ لا صلاحيات (منع افتراضي).
-  if (!user) return new Set();
+type UserPermissionData = NonNullable<Awaited<ReturnType<typeof loadUserPermissionData>>>;
 
-  return computeEffectivePermissions({
+/** يبني مدخلات computeEffectivePermissions من صف المستخدم المُحمّل. */
+function toEffectiveInput(user: UserPermissionData) {
+  return {
     isSystemOwner: user.isSystemOwner,
     roleLevel: user.role.level,
     status: user.status,
@@ -38,7 +42,18 @@ export async function resolveUserPermissions(userId: string): Promise<Set<string
       effect: g.effect,
     })),
     allRegisteredKeys: getAllPermissions().map((p) => p.key),
-  });
+  };
+}
+
+/**
+ * الـ resolver اللي بيتحقن في shared/permissions عبر setPermissionResolver.
+ * `requirePermission()` بيعتمد عليه لمعرفة صلاحيات المستخدم الفعّالة.
+ */
+export async function resolveUserPermissions(userId: string): Promise<Set<string>> {
+  const user = await loadUserPermissionData(userId);
+  // مستخدم غير معروف ⇐ لا صلاحيات (منع افتراضي).
+  if (!user) return new Set();
+  return computeEffectivePermissions(toEffectiveInput(user));
 }
 
 /**
@@ -47,13 +62,7 @@ export async function resolveUserPermissions(userId: string): Promise<Set<string
 export async function getEffectivePermissionsBreakdown(
   userId: string
 ): Promise<EffectivePermissionsBreakdown> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      role: { include: { permissions: true } },
-      directPermissions: true,
-    },
-  });
+  const user = await loadUserPermissionData(userId);
   if (!user) {
     throw new AppError(CommonErrorCodes.NOT_FOUND, "المستخدم غير موجود", 404);
   }
@@ -66,19 +75,7 @@ export async function getEffectivePermissionsBreakdown(
     .filter((g) => g.effect === "revoke")
     .map((g) => g.permissionKey);
 
-  const effective = [
-    ...computeEffectivePermissions({
-      isSystemOwner: user.isSystemOwner,
-      roleLevel: user.role.level,
-      status: user.status,
-      rolePermissionKeys: fromRole,
-      grants: user.directPermissions.map((g) => ({
-        permissionKey: g.permissionKey,
-        effect: g.effect,
-      })),
-      allRegisteredKeys: getAllPermissions().map((p) => p.key),
-    }),
-  ];
+  const effective = [...computeEffectivePermissions(toEffectiveInput(user))];
 
   return { fromRole, granted, revoked, effective };
 }

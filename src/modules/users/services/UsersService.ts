@@ -3,10 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isRegisteredPermission } from "@/modules/shared/permissions";
 import { recordAuditLog } from "@/modules/shared/audit";
 import { AppError, CommonErrorCodes } from "@/modules/shared/errors/AppError";
+import { isUniqueConstraintError } from "@/modules/shared/errors/prismaErrors";
 import { UsersPermissions } from "../permissions";
 import { UsersErrorCodes } from "../errors";
 import type { SafeUser } from "../types";
-import { assertCanManageTarget, assertPermissionKeyIsKnown } from "./PermissionService";
+import {
+  assertCanManageTarget,
+  assertPermissionKeyIsKnown,
+  assertRoleAssignable,
+} from "./PermissionService";
 import type {
   CreateUserInput,
   UpdateUserInput,
@@ -67,6 +72,8 @@ export async function createUser(actorUserId: string, input: CreateUserInput): P
   if (role.status !== "active") {
     throw new AppError(UsersErrorCodes.ROLE_INACTIVE, "لا يمكن ربط مستخدم بدور غير نشط", 400);
   }
+  // منع تصعيد الصلاحيات: لا يجوز إسناد دور بمستوى مالك/مدير نظام (§4، §21).
+  assertRoleAssignable(role.level);
 
   const existing = await prisma.user.findUnique({
     where: { email: input.email },
@@ -78,40 +85,46 @@ export async function createUser(actorUserId: string, input: CreateUserInput): P
 
   const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
 
-  const created = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({
-      data: {
-        fullName: input.fullName,
-        email: input.email,
-        phone: input.phone ?? null,
-        whatsapp: input.whatsapp ?? null,
-        department: input.department ?? null,
-        jobTitle: input.jobTitle ?? null,
-        roleId: input.roleId,
-        passwordHash,
-        mustChangePassword: input.mustChangePassword,
-        adminNotes: input.adminNotes ?? null,
-        // ملاحظة: إنشاء المستخدمين عبر هذه الدالة لا يمنح صفة المالك أبدًا.
-        // مالك النظام يُبذَر مرة واحدة عبر سكربت seed منفصل (خارج نطاق هذه الدفعة).
-      },
-      select: safeUserSelect,
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          fullName: input.fullName,
+          email: input.email,
+          phone: input.phone ?? null,
+          whatsapp: input.whatsapp ?? null,
+          department: input.department ?? null,
+          jobTitle: input.jobTitle ?? null,
+          roleId: input.roleId,
+          passwordHash,
+          mustChangePassword: input.mustChangePassword,
+          adminNotes: input.adminNotes ?? null,
+          // ملاحظة: إنشاء المستخدمين عبر هذه الدالة لا يمنح صفة المالك أبدًا.
+          // مالك النظام يُبذَر مرة واحدة عبر سكربت seed منفصل (خارج نطاق هذه الدفعة).
+        },
+        select: safeUserSelect,
+      });
+
+      await recordAuditLog(
+        {
+          userId: actorUserId,
+          module: "users",
+          action: "create",
+          entityId: user.id,
+          newValue: user,
+        },
+        tx
+      );
+
+      return user;
     });
-
-    await recordAuditLog(
-      {
-        userId: actorUserId,
-        module: "users",
-        action: "create",
-        entityId: user.id,
-        newValue: user,
-      },
-      tx
-    );
-
-    return user;
-  });
-
-  return created;
+  } catch (err) {
+    // شبكة أمان لسباق التزامن: القيد الفريد الوحيد على User هو email.
+    if (isUniqueConstraintError(err)) {
+      throw new AppError(UsersErrorCodes.EMAIL_TAKEN, "بريد الدخول مستخدم بالفعل لحساب آخر", 409);
+    }
+    throw err;
+  }
 }
 
 export async function updateUser(
@@ -138,6 +151,8 @@ export async function updateUser(
     if (role.status !== "active") {
       throw new AppError(UsersErrorCodes.ROLE_INACTIVE, "لا يمكن ربط مستخدم بدور غير نشط", 400);
     }
+    // منع تصعيد الصلاحيات عبر تغيير الدور لمستوى مالك/مدير نظام (§4، §21).
+    assertRoleAssignable(role.level);
   }
 
   const updated = await prisma.$transaction(async (tx) => {

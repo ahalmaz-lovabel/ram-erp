@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isRegisteredPermission } from "@/modules/shared/permissions";
 import { recordAuditLog } from "@/modules/shared/audit";
 import { AppError, CommonErrorCodes } from "@/modules/shared/errors/AppError";
+import {
+  isUniqueConstraintError,
+  uniqueConstraintFields,
+} from "@/modules/shared/errors/prismaErrors";
 import { UsersPermissions } from "../permissions";
 import { UsersErrorCodes } from "../errors";
 import type { RoleView } from "../types";
@@ -12,6 +16,24 @@ import type { CreateRoleInput, UpdateRoleInput } from "./usersSchemas";
  * مفاتيح معروفة في الـ registry المركزي. الأدوار النظامية الثابتة محمية من
  * التعديل البنيوي والأرشفة (تحليل §5، §18، §19).
  */
+
+/**
+ * يحوّل تعارض القيد الفريد على الدور (name/key) — الناتج من سباق تزامن رغم
+ * الفحص المُسبق — لخطأ عمل واضح بدل خطأ 500 عام. يعيد الرمي لو مش تعارض فريد.
+ */
+function rethrowRoleUniqueError(err: unknown): never {
+  if (isUniqueConstraintError(err)) {
+    const fields = uniqueConstraintFields(err);
+    if (fields.includes("key")) {
+      throw new AppError(UsersErrorCodes.ROLE_KEY_TAKEN, "معرّف الدور مستخدم بالفعل", 409);
+    }
+    if (fields.includes("name")) {
+      throw new AppError(UsersErrorCodes.ROLE_NAME_TAKEN, "اسم الدور مستخدم بالفعل", 409);
+    }
+    // قيد فريد آخر (مثل RolePermission) — ما نلبّسهوش خطأ اسم/معرّف الدور.
+  }
+  throw err;
+}
 
 function assertPermissionsAreKnown(permissionKeys: string[]): void {
   for (const key of permissionKeys) {
@@ -29,7 +51,9 @@ function assertPermissionsAreKnown(permissionKeys: string[]): void {
 export async function createRole(actorUserId: string, input: CreateRoleInput): Promise<RoleView> {
   await requirePermission(actorUserId, UsersPermissions.createRole);
 
-  assertPermissionsAreKnown(input.permissionKeys);
+  // إزالة تكرار المفاتيح قبل الكتابة (يمنع ضرب @@unique(roleId, permissionKey)).
+  const permissionKeys = [...new Set(input.permissionKeys)];
+  assertPermissionsAreKnown(permissionKeys);
 
   const [nameClash, keyClash] = await Promise.all([
     prisma.role.findUnique({ where: { name: input.name }, select: { id: true } }),
@@ -42,42 +66,46 @@ export async function createRole(actorUserId: string, input: CreateRoleInput): P
     throw new AppError(UsersErrorCodes.ROLE_KEY_TAKEN, "معرّف الدور مستخدم بالفعل", 409);
   }
 
-  const role = await prisma.$transaction(async (tx) => {
-    const created = await tx.role.create({
-      data: {
-        name: input.name,
-        key: input.key,
-        description: input.description ?? null,
-        department: input.department ?? null,
-        // الأدوار المُنشأة عبر الإدارة مخصصة (غير نظامية) ومستوى تشغيلي.
-        level: "standard",
-        isSystem: false,
-        permissions: {
-          create: input.permissionKeys.map((permissionKey) => ({ permissionKey })),
+  try {
+    const role = await prisma.$transaction(async (tx) => {
+      const created = await tx.role.create({
+        data: {
+          name: input.name,
+          key: input.key,
+          description: input.description ?? null,
+          department: input.department ?? null,
+          // الأدوار المُنشأة عبر الإدارة مخصصة (غير نظامية) ومستوى تشغيلي.
+          level: "standard",
+          isSystem: false,
+          permissions: {
+            create: permissionKeys.map((permissionKey) => ({ permissionKey })),
+          },
         },
-      },
-      include: { permissions: true, _count: { select: { users: true } } },
+        include: { permissions: true, _count: { select: { users: true } } },
+      });
+
+      await recordAuditLog(
+        {
+          userId: actorUserId,
+          module: "users",
+          action: "create_role",
+          entityId: created.id,
+          newValue: {
+            name: created.name,
+            key: created.key,
+            permissionKeys,
+          },
+        },
+        tx
+      );
+
+      return created;
     });
 
-    await recordAuditLog(
-      {
-        userId: actorUserId,
-        module: "users",
-        action: "create_role",
-        entityId: created.id,
-        newValue: {
-          name: created.name,
-          key: created.key,
-          permissionKeys: input.permissionKeys,
-        },
-      },
-      tx
-    );
-
-    return created;
-  });
-
-  return toRoleView(role);
+    return toRoleView(role);
+  } catch (err) {
+    rethrowRoleUniqueError(err);
+  }
 }
 
 export async function updateRole(
@@ -95,8 +123,9 @@ export async function updateRole(
     throw new AppError(CommonErrorCodes.NOT_FOUND, "الدور غير موجود", 404);
   }
 
-  if (input.permissionKeys) {
-    assertPermissionsAreKnown(input.permissionKeys);
+  const permissionKeys = input.permissionKeys ? [...new Set(input.permissionKeys)] : undefined;
+  if (permissionKeys) {
+    assertPermissionsAreKnown(permissionKeys);
   }
 
   if (input.name && input.name !== existing.name) {
@@ -111,52 +140,56 @@ export async function updateRole(
 
   const oldPermissionKeys = existing.permissions.map((p) => p.permissionKey);
 
-  const role = await prisma.$transaction(async (tx) => {
-    // تحديث الصلاحيات = استبدال كامل للمجموعة لو اتبعتت.
-    if (input.permissionKeys) {
-      await tx.rolePermission.deleteMany({ where: { roleId } });
-      if (input.permissionKeys.length > 0) {
-        await tx.rolePermission.createMany({
-          data: input.permissionKeys.map((permissionKey) => ({
-            roleId,
-            permissionKey,
-          })),
-        });
+  try {
+    const role = await prisma.$transaction(async (tx) => {
+      // تحديث الصلاحيات = استبدال كامل للمجموعة لو اتبعتت.
+      if (permissionKeys) {
+        await tx.rolePermission.deleteMany({ where: { roleId } });
+        if (permissionKeys.length > 0) {
+          await tx.rolePermission.createMany({
+            data: permissionKeys.map((permissionKey) => ({
+              roleId,
+              permissionKey,
+            })),
+          });
+        }
       }
-    }
 
-    const updated = await tx.role.update({
-      where: { id: roleId },
-      data: {
-        name: input.name,
-        description: input.description,
-        department: input.department,
-      },
-      include: { permissions: true, _count: { select: { users: true } } },
+      const updated = await tx.role.update({
+        where: { id: roleId },
+        data: {
+          name: input.name,
+          description: input.description,
+          department: input.department,
+        },
+        include: { permissions: true, _count: { select: { users: true } } },
+      });
+
+      await recordAuditLog(
+        {
+          userId: actorUserId,
+          module: "users",
+          action: "update_role",
+          entityId: roleId,
+          oldValue: {
+            name: existing.name,
+            permissionKeys: oldPermissionKeys,
+          },
+          newValue: {
+            name: updated.name,
+            permissionKeys: updated.permissions.map((p) => p.permissionKey),
+          },
+        },
+        tx
+      );
+
+      return updated;
     });
 
-    await recordAuditLog(
-      {
-        userId: actorUserId,
-        module: "users",
-        action: "update_role",
-        entityId: roleId,
-        oldValue: {
-          name: existing.name,
-          permissionKeys: oldPermissionKeys,
-        },
-        newValue: {
-          name: updated.name,
-          permissionKeys: updated.permissions.map((p) => p.permissionKey),
-        },
-      },
-      tx
-    );
-
-    return updated;
-  });
-
-  return toRoleView(role);
+    return toRoleView(role);
+  } catch (err) {
+    rethrowRoleUniqueError(err);
+  }
 }
 
 export async function archiveRole(actorUserId: string, roleId: string): Promise<RoleView> {

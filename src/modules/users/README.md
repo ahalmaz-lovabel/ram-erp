@@ -49,6 +49,9 @@
   طول صريحة.
 - **بذر مالك النظام**: `createUser` لا يمنح صفة المالك أبدًا. حساب المالك
   (`isSystemOwner = true`) يُبذَر مرة واحدة عبر سكربت seed منفصل (لم يُبنَ بعد).
+- **منع تصعيد الأدوار**: `createUser`/`updateUser` يرفضان إسناد دور مستواه
+  `owner` أو `admin` (`ROLE_LEVEL_NOT_ASSIGNABLE`) — الأدوار القيادية تُدار عبر
+  المسار المخصّص (seed)، لأن دور `owner` يمنح كل الصلاحيات.
 - **`actorUserId` كوسيط**: نقاط الدخول (actions) بتستقبل معرّف المنفّذ كوسيط
   لحين بناء طبقة الجلسات، وقتها يُستخرج من الجلسة server-side.
 - **`AuditLog.userId` بدون FK**: لسه String (من دفعة البنية المشتركة) — يتحوّل
@@ -90,6 +93,6 @@
 - [x] لا يوجد منطق عمل داخل components (لا توجد components في هذه الدفعة)
 - [x] اختبارات على قاعدة العمل الحساسة (حساب الصلاحيات الفعّالة + حماية المالك)
 - [x] تحقّق end-to-end على Staging (resolver, createUser, hashing, audit, منع افتراضي, حماية المالك)
-- [ ] مراجعة كود (local gate أو CodeRabbit)
-- [ ] Vercel preview نضيف
+- [x] مراجعة كود (code-review) + معالجة النتائج (منع تصعيد الأدوار، P2002→أخطاء عمل، dedupe للصلاحيات، إصلاحات Zod)
+- [x] Vercel preview/production نضيف (build ناجح على Vercel)
 - [ ] (لاحقًا) البنود المؤجّلة أعلاه

@@ -20,12 +20,30 @@ const permissionEffectSchema = z.enum(["grant", "revoke"]);
 // اشترط تشفيرها لكن لم يحدد سياسة طول صريحة.
 const passwordSchema = z.string().min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل");
 
-const optionalTrimmed = z
-  .string()
-  .trim()
-  .min(1)
-  .optional()
-  .or(z.literal("").transform(() => undefined));
+// نص اختياري: القيمة الفاضية أو المكوّنة من مسافات فقط ⇒ undefined (تُعامَل
+// كأنها غير مُدخلة). preprocess بيتعامل مع القيمة الأصلية قبل الـ trim عشان
+// نتجنّب رفض النصوص اللي كلها مسافات.
+const optionalTrimmed = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.string().trim().min(1).optional()
+);
+
+// نص قابل للمسح عند التعديل: "" أو مسافات ⇒ null (يمسح الحقل فعليًا)،
+// الغياب ⇒ undefined (بدون تغيير). Prisma بيميّز null (مسح) عن undefined (تجاهل).
+const clearableTrimmed = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+  z.string().trim().min(1).nullable().optional()
+);
+
+// قسم قابل للمسح عند التعديل (نفس منطق clearableTrimmed لكن قيمة enum).
+const clearableDepartment = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+  departmentSchema.nullable().optional()
+);
+
+// مفاتيح صلاحيات الدور. إزالة التكرار تتم في الـ service (مكان الكتابة الفعلي)
+// حتى لو اتنادى مباشرة بدون المرور على هذا الـ schema.
+const permissionKeysSchema = z.array(z.string().trim().min(1));
 
 // ===== المستخدمون =====
 
@@ -45,12 +63,12 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 export const updateUserSchema = z.object({
   fullName: z.string().trim().min(1).optional(),
-  phone: optionalTrimmed,
-  whatsapp: optionalTrimmed,
-  department: departmentSchema.optional(),
-  jobTitle: optionalTrimmed,
+  phone: clearableTrimmed,
+  whatsapp: clearableTrimmed,
+  department: clearableDepartment,
+  jobTitle: clearableTrimmed,
   roleId: z.string().min(1).optional(),
-  adminNotes: optionalTrimmed,
+  adminNotes: clearableTrimmed,
 });
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
@@ -90,7 +108,7 @@ export const createRoleSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "معرّف الدور يسمح بحروف إنجليزية صغيرة وأرقام وشرطة فقط"),
   description: optionalTrimmed,
   department: departmentSchema.optional(),
-  permissionKeys: z.array(z.string().trim().min(1)).default([]),
+  permissionKeys: permissionKeysSchema.default([]),
 });
 export type CreateRoleInput = z.infer<typeof createRoleSchema>;
 
@@ -98,6 +116,6 @@ export const updateRoleSchema = z.object({
   name: z.string().trim().min(1).optional(),
   description: optionalTrimmed,
   department: departmentSchema.optional(),
-  permissionKeys: z.array(z.string().trim().min(1)).optional(),
+  permissionKeys: permissionKeysSchema.optional(),
 });
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;

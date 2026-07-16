@@ -7,6 +7,7 @@ export const UsersErrorCodes = {
   ROLE_NOT_FOUND: "ROLE_NOT_FOUND",
   ROLE_INACTIVE: "ROLE_INACTIVE", // لا يمكن ربط مستخدم بدور موقوف/مؤرشف
   OWNER_PROTECTED: "OWNER_PROTECTED", // لا يمكن تعديل/إيقاف مالك النظام من حساب آخر (§4، §10)
+  ROLE_LEVEL_NOT_ASSIGNABLE: "ROLE_LEVEL_NOT_ASSIGNABLE", // لا يمكن ربط دور بمستوى مالك/مدير نظام عبر هذا المسار (§4، §21)
   ROLE_KEY_TAKEN: "ROLE_KEY_TAKEN", // معرّف الدور (key) مستخدم بالفعل
   ROLE_NAME_TAKEN: "ROLE_NAME_TAKEN",
   ROLE_HAS_USERS: "ROLE_HAS_USERS", // لا يمكن أرشفة دور مرتبط بمستخدمين نشطين (§18)
