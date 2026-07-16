@@ -1,12 +1,14 @@
 "use server";
 
-// نقطة الدخول الوحيدة من الواجهة لموديول users. كل action: يتحقق بـ Zod،
-// ينادي service، ويلف كله بـ wrapAction لرد موحّد { success, data | error }.
+// نقطة الدخول الوحيدة من الواجهة لموديول users. كل action: يستخرج هوية المنفّذ
+// من الجلسة server-side (مش من مدخلات العميل)، يتحقق بـ Zod، ينادي service،
+// ويلف كله بـ wrapAction لرد موحّد { success, data | error }.
 //
-// ملاحظة: actorUserId (منفّذ العملية) يجي حاليًا كوسيط. لما تتبني طبقة
-// الجلسات/المصادقة، يتحوّل لاستخراجه من الجلسة server-side بدل تمريره.
+// أمان: actorUserId ييجي من requireCurrentUserId() (الجلسة) — مستحيل العميل
+// ينتحل هوية غيره. لو مفيش جلسة صالحة يرجع خطأ UNAUTHENTICATED (401).
 
 import { wrapAction } from "@/modules/shared/errors/handleError";
+import { requireCurrentUserId } from "@/modules/shared/auth/session";
 import {
   createUser,
   updateUser,
@@ -31,76 +33,89 @@ import {
 
 // ===== المستخدمون =====
 
-export async function createUserAction(actorUserId: string, raw: unknown) {
+export async function createUserAction(raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = createUserSchema.parse(raw);
     return createUser(actorUserId, input);
   });
 }
 
-export async function updateUserAction(actorUserId: string, targetUserId: string, raw: unknown) {
+export async function updateUserAction(targetUserId: string, raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = updateUserSchema.parse(raw);
     return updateUser(actorUserId, targetUserId, input);
   });
 }
 
-export async function suspendUserAction(actorUserId: string, targetUserId: string, raw: unknown) {
+export async function suspendUserAction(targetUserId: string, raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = suspendUserSchema.parse(raw);
     return suspendUser(actorUserId, targetUserId, input);
   });
 }
 
-export async function reactivateUserAction(actorUserId: string, targetUserId: string) {
-  return wrapAction(async () => reactivateUser(actorUserId, targetUserId));
+export async function reactivateUserAction(targetUserId: string) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return reactivateUser(actorUserId, targetUserId);
+  });
 }
 
-export async function archiveUserAction(actorUserId: string, targetUserId: string, raw: unknown) {
+export async function archiveUserAction(targetUserId: string, raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = archiveUserSchema.parse(raw);
     return archiveUser(actorUserId, targetUserId, input);
   });
 }
 
-export async function resetPasswordAction(actorUserId: string, targetUserId: string, raw: unknown) {
+export async function resetPasswordAction(targetUserId: string, raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = resetPasswordSchema.parse(raw);
     return resetPassword(actorUserId, targetUserId, input);
   });
 }
 
-export async function setUserPermissionAction(
-  actorUserId: string,
-  targetUserId: string,
-  raw: unknown
-) {
+export async function setUserPermissionAction(targetUserId: string, raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = setUserPermissionSchema.parse(raw);
     return setUserPermission(actorUserId, targetUserId, input);
   });
 }
 
-export async function getUserPermissionsAction(actorUserId: string, targetUserId: string) {
-  return wrapAction(async () => viewUserPermissions(actorUserId, targetUserId));
+export async function getUserPermissionsAction(targetUserId: string) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return viewUserPermissions(actorUserId, targetUserId);
+  });
 }
 
 // ===== الأدوار =====
 
-export async function createRoleAction(actorUserId: string, raw: unknown) {
+export async function createRoleAction(raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = createRoleSchema.parse(raw);
     return createRole(actorUserId, input);
   });
 }
 
-export async function updateRoleAction(actorUserId: string, roleId: string, raw: unknown) {
+export async function updateRoleAction(roleId: string, raw: unknown) {
   return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
     const input = updateRoleSchema.parse(raw);
     return updateRole(actorUserId, roleId, input);
   });
 }
 
-export async function archiveRoleAction(actorUserId: string, roleId: string) {
-  return wrapAction(async () => archiveRole(actorUserId, roleId));
+export async function archiveRoleAction(roleId: string) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return archiveRole(actorUserId, roleId);
+  });
 }

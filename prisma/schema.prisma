@@ -139,10 +139,41 @@ model User {
   updatedAt DateTime @updatedAt
 
   directPermissions UserPermissionGrant[]
+  sessions          Session[]
 
   @@index([roleId])
   @@index([status])
   @@index([department])
+}
+
+// جلسة دخول مستقلة لكل جهاز/متصفح (تحليل §13، §14). نخزّن hash للتوكن فقط
+// — التوكن الخام يعيش في كوكي httpOnly عند العميل ولا يُحفظ في قاعدة البيانات.
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique // SHA-256 للتوكن — مش التوكن نفسه
+  expiresAt  DateTime
+  revokedAt  DateTime? // إنهاء الجلسة يدويًا (تسجيل خروج/إنهاء كل الجلسات)
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// سجل محاولات الدخول — أساس القفل الأمني بعد محاولات فاشلة متكررة (تحليل §13).
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String // البريد المُدخل (حتى لو مش موجود، لمنع تعداد الحسابات)
+  success   Boolean
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
 }
 
 // استثناء صلاحية على مستوى مستخدم واحد (تحليل §11): منح إضافي أو سحب.

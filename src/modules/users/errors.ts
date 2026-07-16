@@ -16,6 +16,12 @@ export const UsersErrorCodes = {
   REASON_REQUIRED: "REASON_REQUIRED", // العملية الحساسة تحتاج سببًا مكتوبًا (§11، §21)
   CANNOT_MODIFY_SELF_PERMISSIONS: "CANNOT_MODIFY_SELF_PERMISSIONS", // لا يعدّل المستخدم صلاحياته بنفسه (§21)
   CANNOT_SUSPEND_SELF: "CANNOT_SUSPEND_SELF", // منع إيقاف/أرشفة المستخدم لحسابه (تجنّب حبس النفس)
+
+  // المصادقة وتسجيل الدخول (§13، §14)
+  INVALID_CREDENTIALS: "INVALID_CREDENTIALS", // بريد أو كلمة مرور غير صحيحة (رسالة موحّدة تمنع تعداد الحسابات)
+  ACCOUNT_INACTIVE: "ACCOUNT_INACTIVE", // الحساب موقوف/مقفل/مؤرشف — ممنوع الدخول
+  ACCOUNT_LOCKED: "ACCOUNT_LOCKED", // قفل مؤقت بعد محاولات دخول فاشلة متكررة
+  INVALID_CURRENT_PASSWORD: "INVALID_CURRENT_PASSWORD", // كلمة المرور الحالية غير صحيحة عند التغيير
 } as const;
 
 export type UsersErrorCode = (typeof UsersErrorCodes)[keyof typeof UsersErrorCodes];

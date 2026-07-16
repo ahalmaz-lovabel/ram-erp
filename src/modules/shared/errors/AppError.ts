@@ -37,6 +37,7 @@ export function isAppError(err: unknown): err is AppError {
  * نفسه (مثلاً modules/inventory/errors.ts).
  */
 export const CommonErrorCodes = {
+  UNAUTHENTICATED: "UNAUTHENTICATED",
   PERMISSION_DENIED: "PERMISSION_DENIED",
   NOT_FOUND: "NOT_FOUND",
   VALIDATION_FAILED: "VALIDATION_FAILED",
