@@ -6,9 +6,10 @@ import type {
   MeasurementUnit,
   MaterialStatus,
   AttributeType,
+  OperationCostModel,
 } from "@/generated/prisma/client";
 
-export type { MeasurementUnit, MaterialStatus, AttributeType };
+export type { MeasurementUnit, MaterialStatus, AttributeType, OperationCostModel };
 
 export interface MaterialView {
   id: string;
@@ -16,6 +17,7 @@ export interface MaterialView {
   name: string;
   category: string;
   description: string | null;
+  imageUrl: string | null;
   purchaseUnit: MeasurementUnit;
   baseUnit: MeasurementUnit;
   conversionFactor: Prisma.Decimal;
@@ -24,6 +26,18 @@ export interface MaterialView {
   lastPurchasePrice: Prisma.Decimal | null;
   avgPurchasePrice: Prisma.Decimal | null;
   status: MaterialStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OperationView {
+  id: string;
+  name: string;
+  category: string | null;
+  costModel: OperationCostModel;
+  standardCost: Prisma.Decimal;
+  description: string | null;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

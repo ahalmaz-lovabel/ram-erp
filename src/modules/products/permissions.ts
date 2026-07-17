@@ -18,6 +18,12 @@ export const ProductsPermissions = {
   createAttribute: "attributes.create",
   updateAttribute: "attributes.update",
   archiveAttribute: "attributes.archive",
+
+  // مكتبة عمليات التصنيع (§10)
+  viewOperations: "operations.view",
+  createOperation: "operations.create",
+  updateOperation: "operations.update",
+  archiveOperation: "operations.archive",
 } as const;
 
 export type ProductsPermission = (typeof ProductsPermissions)[keyof typeof ProductsPermissions];
@@ -32,4 +38,8 @@ export const ProductsPermissionLabels: Record<keyof typeof ProductsPermissions, 
   createAttribute: "إضافة سمة",
   updateAttribute: "تعديل سمة",
   archiveAttribute: "أرشفة سمة",
+  viewOperations: "عرض عمليات التصنيع",
+  createOperation: "إضافة عملية تصنيع",
+  updateOperation: "تعديل عملية تصنيع",
+  archiveOperation: "أرشفة عملية تصنيع",
 };

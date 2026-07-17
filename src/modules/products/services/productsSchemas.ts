@@ -18,6 +18,8 @@ const measurementUnit = z.enum([
   "piece",
 ]);
 
+const operationCostModel = z.enum(["fixed", "perTime", "perQuantity", "percentage"]);
+
 const attributeType = z.enum([
   "text",
   "number",
@@ -55,6 +57,7 @@ export const createMaterialSchema = z.object({
   name: z.string().trim().min(1, "اسم الخامة مطلوب"),
   category: z.string().trim().min(1, "تصنيف الخامة مطلوب"),
   description: optionalText,
+  imageUrl: optionalText,
   purchaseUnit: measurementUnit,
   baseUnit: measurementUnit,
   conversionFactor: positiveDecimal,
@@ -66,6 +69,7 @@ export const updateMaterialSchema = z.object({
   name: z.string().trim().min(1).optional(),
   category: z.string().trim().min(1).optional(),
   description: optionalText,
+  imageUrl: optionalText,
 });
 export type UpdateMaterialInput = z.infer<typeof updateMaterialSchema>;
 
@@ -106,3 +110,23 @@ export const updateAttributeSchema = z.object({
   values: z.array(z.string().trim().min(1)).optional(),
 });
 export type UpdateAttributeInput = z.infer<typeof updateAttributeSchema>;
+
+// ===== مكتبة عمليات التصنيع (§10) =====
+
+export const createOperationSchema = z.object({
+  name: z.string().trim().min(1, "اسم العملية مطلوب"),
+  category: optionalText,
+  costModel: operationCostModel,
+  standardCost: positiveDecimal,
+  description: optionalText,
+});
+export type CreateOperationInput = z.infer<typeof createOperationSchema>;
+
+export const updateOperationSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  category: optionalText,
+  costModel: operationCostModel.optional(),
+  standardCost: positiveDecimal.optional(),
+  description: optionalText,
+});
+export type UpdateOperationInput = z.infer<typeof updateOperationSchema>;

@@ -12,12 +12,15 @@ import {
   archiveMaterial,
 } from "../services/MaterialService";
 import { createAttribute, updateAttribute, archiveAttribute } from "../services/AttributeService";
+import { createOperation, updateOperation, archiveOperation } from "../services/OperationService";
 import {
   createMaterialSchema,
   updateMaterialSchema,
   updateMaterialPriceSchema,
   createAttributeSchema,
   updateAttributeSchema,
+  createOperationSchema,
+  updateOperationSchema,
 } from "../services/productsSchemas";
 
 // ===== مكتبة الخامات =====
@@ -70,5 +73,28 @@ export async function archiveAttributeAction(attributeId: string) {
   return wrapAction(async () => {
     const actorUserId = await requireCurrentUserId();
     return archiveAttribute(actorUserId, attributeId);
+  });
+}
+
+// ===== مكتبة عمليات التصنيع =====
+
+export async function createOperationAction(raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return createOperation(actorUserId, createOperationSchema.parse(raw));
+  });
+}
+
+export async function updateOperationAction(operationId: string, raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return updateOperation(actorUserId, operationId, updateOperationSchema.parse(raw));
+  });
+}
+
+export async function archiveOperationAction(operationId: string) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return archiveOperation(actorUserId, operationId);
   });
 }

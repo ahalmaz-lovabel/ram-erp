@@ -54,6 +54,7 @@ export async function createMaterial(
           name: input.name,
           category: input.category,
           description: input.description ?? null,
+          imageUrl: input.imageUrl ?? null,
           purchaseUnit: input.purchaseUnit,
           baseUnit: input.baseUnit,
           conversionFactor: input.conversionFactor,
@@ -103,6 +104,7 @@ export async function updateMaterial(
         name: input.name,
         category: input.category,
         description: input.description,
+        imageUrl: input.imageUrl,
       },
     });
 

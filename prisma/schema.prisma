@@ -196,19 +196,32 @@ model UserPermissionGrant {
 // مبني على docs/analysis/products-analysis.md (§7، §8). المنتجات نفسها والوصفات
 // ومحرك التكلفة يأتون في المرحلة التالية.
 
-// وحدات القياس المستخدمة في الشراء والحساب (تحليل §8).
+// وحدات القياس المستخدمة في الشراء والحساب (تحليل §8 + إضافة التكلفة الهرمية).
+// كل وحدة تنتمي لبُعد (dimension): عدد/طول/مساحة/حجم/وزن/سعة — راجع unitDimension().
 enum MeasurementUnit {
-  ton // طن
-  kg // كيلو
-  gram // جرام
-  meter // متر
-  cm // سم
-  mm // مم
-  liter // لتر
-  ml // مل
-  roll // رول
-  box // علبة
-  piece // قطعة
+  ton // طن (وزن)
+  kg // كيلو (وزن)
+  gram // جرام (وزن)
+  meter // متر (طول)
+  cm // سم (طول)
+  mm // مم (طول)
+  squareMeter // متر مربع (مساحة)
+  squareCm // سم مربع (مساحة)
+  cubicMeter // متر مكعب (حجم)
+  cubicCm // سم مكعب (حجم)
+  liter // لتر (سعة)
+  ml // مل (سعة)
+  roll // رول (عدد)
+  box // علبة (عدد)
+  piece // قطعة (عدد)
+}
+
+// نموذج تكلفة عملية التصنيع (مكتبة العمليات).
+enum OperationCostModel {
+  fixed // مبلغ ثابت لكل قطعة/تطبيق
+  perTime // سعر × زمن
+  perQuantity // سعر × كمية
+  percentage // نسبة من تكلفة الخامات
 }
 
 enum MaterialStatus {
@@ -225,6 +238,7 @@ model Material {
   name        String
   category    String // حديد، مواسير، صاج، جلد، إسفنج، دهان... (مفتوح)
   description String?
+  imageUrl    String? // صورة الخامة
   // معامل التحويل: كام وحدة حساب في وحدة الشراء (مثال: 1 طن = 1000 كجم ⇒ 1000).
   purchaseUnit     MeasurementUnit
   baseUnit         MeasurementUnit
@@ -304,4 +318,22 @@ model AttributeValue {
 
   @@unique([attributeId, value])
   @@index([attributeId])
+}
+
+// مكتبة عمليات التصنيع (تحليل §10 + إضافة التكلفة الهرمية): عمليات معيارية
+// قابلة لإعادة الاستخدام (قص، لحام، دهان، تنجيد، تجميع، تشغيل، تغليف، اختبار)
+// بتكلفة معيارية. تُطبَّق على مكوّنات المنتج في مرحلة لاحقة (ComponentOperation).
+model Operation {
+  id           String             @id @default(cuid())
+  name         String             @unique
+  category     String? // تصنيف العملية (قص/لحام/دهان...)
+  costModel    OperationCostModel
+  standardCost Decimal // القيمة المعيارية (تفسيرها حسب costModel)
+  description  String?
+  archivedAt   DateTime? // أرشفة بدل الحذف (قاعدة CLAUDE #16)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([archivedAt])
+  @@index([category])
 }
