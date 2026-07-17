@@ -191,3 +191,117 @@ model UserPermissionGrant {
   @@unique([userId, permissionKey])
   @@index([userId])
 }
+
+// ===== PRODUCTS: مكتبة الخامات + مكتبة السمات (مرحلة 1أ) =====
+// مبني على docs/analysis/products-analysis.md (§7، §8). المنتجات نفسها والوصفات
+// ومحرك التكلفة يأتون في المرحلة التالية.
+
+// وحدات القياس المستخدمة في الشراء والحساب (تحليل §8).
+enum MeasurementUnit {
+  ton // طن
+  kg // كيلو
+  gram // جرام
+  meter // متر
+  cm // سم
+  mm // مم
+  liter // لتر
+  ml // مل
+  roll // رول
+  box // علبة
+  piece // قطعة
+}
+
+enum MaterialStatus {
+  active // نشطة
+  suspended // موقوفة
+  archived // مؤرشفة
+}
+
+// مكتبة الخامات: المرجع المركزي للخامات وأسعارها لحساب التكلفة تلقائيًا (تحليل §8).
+// كل الحقول المالية Decimal (قاعدة CLAUDE #3).
+model Material {
+  id          String         @id @default(cuid())
+  code        String         @unique // كود الخامة
+  name        String
+  category    String // حديد، مواسير، صاج، جلد، إسفنج، دهان... (مفتوح)
+  description String?
+  // معامل التحويل: كام وحدة حساب في وحدة الشراء (مثال: 1 طن = 1000 كجم ⇒ 1000).
+  purchaseUnit     MeasurementUnit
+  baseUnit         MeasurementUnit
+  conversionFactor Decimal
+  // سعر وحدة الشراء، وسعر أقل وحدة (baseUnitPrice = purchaseUnitPrice / conversionFactor).
+  purchaseUnitPrice Decimal
+  baseUnitPrice     Decimal
+  lastPurchasePrice Decimal?
+  avgPurchasePrice  Decimal?
+  status            MaterialStatus @default(active)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  priceHistory MaterialPriceHistory[]
+
+  @@index([status])
+  @@index([category])
+}
+
+// سجل تغيّر أسعار الخامة مع التاريخ والسبب والمستخدم (تحليل §8).
+model MaterialPriceHistory {
+  id                    String   @id @default(cuid())
+  materialId            String
+  material              Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  oldPurchaseUnitPrice  Decimal?
+  newPurchaseUnitPrice  Decimal
+  oldBaseUnitPrice      Decimal?
+  newBaseUnitPrice      Decimal
+  reason                String?
+  changedByUserId       String
+  createdAt             DateTime @default(now())
+
+  @@index([materialId])
+  @@index([createdAt])
+}
+
+// نوع السمة (تحليل §7).
+enum AttributeType {
+  text // نص
+  number // رقم
+  list // اختيار من قائمة
+  boolean // نعم/لا
+  unit // وحدة قياس
+  color // لون
+  file // ملف
+  image // صورة
+}
+
+// مكتبة السمات: قاموس مركزي للخصائص المستدعاة داخل المنتجات (تحليل §7).
+model Attribute {
+  id            String           @id @default(cuid())
+  name          String           @unique // اللون، المقاس، الوزن...
+  type          AttributeType
+  unit          MeasurementUnit? // وحدة القياس إن وجدت
+  isRequired    Boolean          @default(false)
+  showInQuotes  Boolean          @default(false)
+  showOnWebsite Boolean          @default(false)
+  usedInFilter  Boolean          @default(false)
+  internalOnly  Boolean          @default(false)
+  displayOrder  Int              @default(0)
+  archivedAt    DateTime? // أرشفة بدل الحذف (قاعدة CLAUDE #16)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  values AttributeValue[]
+
+  @@index([archivedAt])
+}
+
+// القيم المسموحة لسمة من نوع list (تحليل §7).
+model AttributeValue {
+  id           String    @id @default(cuid())
+  attributeId  String
+  attribute    Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  value        String
+  displayOrder Int       @default(0)
+
+  @@unique([attributeId, value])
+  @@index([attributeId])
+}

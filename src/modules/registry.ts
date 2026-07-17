@@ -8,5 +8,6 @@ export interface ModuleRegistryEntry {
 }
 
 export const moduleRegistry: ModuleRegistryEntry[] = [
+  { name: "products", label: "المنتجات والخامات والسمات وتكلفة الإنتاج", status: "in-progress" },
   { name: "users", label: "المستخدمون والأدوار والصلاحيات وسجل العمليات", status: "in-progress" },
 ];

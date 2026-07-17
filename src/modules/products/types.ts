@@ -1,0 +1,52 @@
+// أنواع بيانات موديول products. المصدر النهائي للحقول هو schema.prisma.
+// مرحلة 1أ: الخامات والسمات. القيم المالية Prisma.Decimal (ممنوع number للأموال).
+
+import type {
+  Prisma,
+  MeasurementUnit,
+  MaterialStatus,
+  AttributeType,
+} from "@/generated/prisma/client";
+
+export type { MeasurementUnit, MaterialStatus, AttributeType };
+
+export interface MaterialView {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  description: string | null;
+  purchaseUnit: MeasurementUnit;
+  baseUnit: MeasurementUnit;
+  conversionFactor: Prisma.Decimal;
+  purchaseUnitPrice: Prisma.Decimal;
+  baseUnitPrice: Prisma.Decimal;
+  lastPurchasePrice: Prisma.Decimal | null;
+  avgPurchasePrice: Prisma.Decimal | null;
+  status: MaterialStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AttributeValueView {
+  id: string;
+  value: string;
+  displayOrder: number;
+}
+
+export interface AttributeView {
+  id: string;
+  name: string;
+  type: AttributeType;
+  unit: MeasurementUnit | null;
+  isRequired: boolean;
+  showInQuotes: boolean;
+  showOnWebsite: boolean;
+  usedInFilter: boolean;
+  internalOnly: boolean;
+  displayOrder: number;
+  archivedAt: Date | null;
+  values: AttributeValueView[];
+  createdAt: Date;
+  updatedAt: Date;
+}
