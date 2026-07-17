@@ -253,6 +253,7 @@ model Material {
   updatedAt         DateTime       @updatedAt
 
   priceHistory MaterialPriceHistory[]
+  bomItems     ComponentMaterial[]
 
   @@index([status])
   @@index([category])
@@ -334,6 +335,99 @@ model Operation {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
+  appliedIn ComponentOperation[]
+
   @@index([archivedAt])
   @@index([category])
+}
+
+// حالة المنتج (تحليل §6).
+enum ProductStatus {
+  active // نشط
+  inactive // غير نشط
+  suspended // موقوف
+  archived // مؤرشف
+}
+
+// المنتج (تحليل §6). المرحلة 1ب-2: الهيكل + شجرة المكوّنات + التكلفة المجمّعة.
+// التسعير والربحية والبيانات التسويقية تأتي في 1ب-3.
+model Product {
+  id             String        @id @default(cuid())
+  code           String        @unique // كود المنتج (فريد)
+  name           String
+  status         ProductStatus @default(active)
+  productionCost Decimal       @default(0) // تكلفة الإنتاج المجمّعة (cached من محرك التكلفة)
+  costUpdatedAt  DateTime? // آخر إعادة حساب للتكلفة
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  components Component[]
+
+  @@index([status])
+}
+
+// مكوّن في شجرة المنتج — ذاتي المرجع (تجميعة فرعية أو قطعة نهائية).
+// مبني على مذكرة التصميم الهرمي (mBOM). المواصفات تُستخدم لاحقًا للورقة الفنية.
+model Component {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // شجرة: أب اختياري داخل نفس المنتج.
+  parentId String?
+  parent   Component?  @relation("ComponentTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Component[] @relation("ComponentTree")
+
+  name     String
+  quantity Decimal @default(1) // عدد النسخ داخل الأب (مثال: رجل ×2)
+
+  // مواصفات اختيارية للورقة الفنية (§ ورقة فنية).
+  lengthCm    Decimal?
+  widthCm     Decimal?
+  thicknessMm Decimal?
+  weightKg    Decimal?
+  notes       String?
+
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  materials  ComponentMaterial[]
+  operations ComponentOperation[]
+
+  @@index([productId])
+  @@index([parentId])
+}
+
+// بند خامة في مكوّن (leaf BOM item). الوحدة لازم تكون نفس بُعد وحدة حساب الخامة.
+model ComponentMaterial {
+  id           String          @id @default(cuid())
+  componentId  String
+  component    Component       @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  materialId   String
+  material     Material        @relation(fields: [materialId], references: [id])
+  quantity     Decimal
+  unit         MeasurementUnit
+  wastePercent Decimal         @default(0)
+  createdAt    DateTime        @default(now())
+
+  @@index([componentId])
+  @@index([materialId])
+}
+
+// عملية تصنيع مُطبّقة على مكوّن — snapshot لتكلفتها وقت التطبيق حتى لا يتغيّر
+// تسعير قديم عند تعديل مكتبة العمليات. operationId اختياري (عملية استثنائية).
+model ComponentOperation {
+  id           String             @id @default(cuid())
+  componentId  String
+  component    Component          @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  operationId  String? // مرجع مكتبة العمليات (null لو استثنائية inline)
+  operation    Operation?         @relation(fields: [operationId], references: [id])
+  name         String // snapshot لاسم العملية
+  costModel    OperationCostModel // snapshot
+  standardCost Decimal // snapshot
+  param        Decimal            @default(1) // الكمية/الزمن لـ perQuantity/perTime
+  sortOrder    Int                @default(0)
+  createdAt    DateTime           @default(now())
+
+  @@index([componentId])
 }

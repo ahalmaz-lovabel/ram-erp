@@ -7,9 +7,21 @@ import type {
   MaterialStatus,
   AttributeType,
   OperationCostModel,
+  ProductStatus,
 } from "@/generated/prisma/client";
 
-export type { MeasurementUnit, MaterialStatus, AttributeType, OperationCostModel };
+export type { MeasurementUnit, MaterialStatus, AttributeType, OperationCostModel, ProductStatus };
+
+export interface ProductView {
+  id: string;
+  code: string;
+  name: string;
+  status: ProductStatus;
+  productionCost: Prisma.Decimal;
+  costUpdatedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface MaterialView {
   id: string;

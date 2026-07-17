@@ -24,6 +24,13 @@ export const ProductsPermissions = {
   createOperation: "operations.create",
   updateOperation: "operations.update",
   archiveOperation: "operations.archive",
+
+  // المنتج نفسه (§6، §20)
+  viewProducts: "products.view",
+  createProduct: "products.create",
+  manageProductBom: "products.manage_bom", // بناء/تعديل شجرة المكوّنات والوصفة (حساس §20)
+  viewProductCost: "products.view_cost", // رؤية تكلفة الإنتاج (حساس §12)
+  archiveProduct: "products.archive",
 } as const;
 
 export type ProductsPermission = (typeof ProductsPermissions)[keyof typeof ProductsPermissions];
@@ -42,4 +49,9 @@ export const ProductsPermissionLabels: Record<keyof typeof ProductsPermissions, 
   createOperation: "إضافة عملية تصنيع",
   updateOperation: "تعديل عملية تصنيع",
   archiveOperation: "أرشفة عملية تصنيع",
+  viewProducts: "عرض المنتجات",
+  createProduct: "إضافة منتج",
+  manageProductBom: "بناء/تعديل مكوّنات المنتج",
+  viewProductCost: "عرض تكلفة المنتج",
+  archiveProduct: "أرشفة منتج",
 };

@@ -13,6 +13,12 @@ import {
 } from "../services/MaterialService";
 import { createAttribute, updateAttribute, archiveAttribute } from "../services/AttributeService";
 import { createOperation, updateOperation, archiveOperation } from "../services/OperationService";
+import { createProduct, recalculateProductCost } from "../services/ProductService";
+import {
+  addComponent,
+  addComponentMaterial,
+  addComponentOperation,
+} from "../services/ComponentService";
 import {
   createMaterialSchema,
   updateMaterialSchema,
@@ -21,6 +27,10 @@ import {
   updateAttributeSchema,
   createOperationSchema,
   updateOperationSchema,
+  createProductSchema,
+  addComponentSchema,
+  addComponentMaterialSchema,
+  addComponentOperationSchema,
 } from "../services/productsSchemas";
 
 // ===== مكتبة الخامات =====
@@ -96,5 +106,42 @@ export async function archiveOperationAction(operationId: string) {
   return wrapAction(async () => {
     const actorUserId = await requireCurrentUserId();
     return archiveOperation(actorUserId, operationId);
+  });
+}
+
+// ===== المنتج + شجرة المكوّنات =====
+
+export async function createProductAction(raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return createProduct(actorUserId, createProductSchema.parse(raw));
+  });
+}
+
+export async function addComponentAction(productId: string, raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return addComponent(actorUserId, productId, addComponentSchema.parse(raw));
+  });
+}
+
+export async function addComponentMaterialAction(componentId: string, raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return addComponentMaterial(actorUserId, componentId, addComponentMaterialSchema.parse(raw));
+  });
+}
+
+export async function addComponentOperationAction(componentId: string, raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return addComponentOperation(actorUserId, componentId, addComponentOperationSchema.parse(raw));
+  });
+}
+
+export async function recalculateProductCostAction(productId: string) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return recalculateProductCost(actorUserId, productId);
   });
 }

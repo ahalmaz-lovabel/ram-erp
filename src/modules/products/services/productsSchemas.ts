@@ -11,6 +11,10 @@ const measurementUnit = z.enum([
   "meter",
   "cm",
   "mm",
+  "squareMeter",
+  "squareCm",
+  "cubicMeter",
+  "cubicCm",
   "liter",
   "ml",
   "roll",
@@ -130,3 +134,58 @@ export const updateOperationSchema = z.object({
   description: optionalText,
 });
 export type UpdateOperationInput = z.infer<typeof updateOperationSchema>;
+
+// ===== المنتج + شجرة المكوّنات (§6، مذكرة التصميم الهرمي) =====
+
+// كمية غير سالبة (للأبعاد والهالك) — نص أو رقم.
+const nonNegativeDecimal = z
+  .union([z.string(), z.number()])
+  .refine((v) => {
+    try {
+      return new Prisma.Decimal(v).greaterThanOrEqualTo(0);
+    } catch {
+      return false;
+    }
+  }, "قيمة رقمية غير سالبة مطلوبة")
+  .transform((v) => new Prisma.Decimal(v));
+
+export const createProductSchema = z.object({
+  code: z.string().trim().min(1, "كود المنتج مطلوب"),
+  name: z.string().trim().min(1, "اسم المنتج مطلوب"),
+});
+export type CreateProductInput = z.infer<typeof createProductSchema>;
+
+export const addComponentSchema = z.object({
+  parentId: z.string().min(1).optional(),
+  name: z.string().trim().min(1, "اسم المكوّن مطلوب"),
+  quantity: positiveDecimal.default(1),
+  lengthCm: nonNegativeDecimal.optional(),
+  widthCm: nonNegativeDecimal.optional(),
+  thicknessMm: nonNegativeDecimal.optional(),
+  weightKg: nonNegativeDecimal.optional(),
+  notes: optionalText,
+  sortOrder: z.number().int().min(0).default(0),
+});
+export type AddComponentInput = z.infer<typeof addComponentSchema>;
+
+export const addComponentMaterialSchema = z.object({
+  materialId: z.string().min(1, "الخامة مطلوبة"),
+  quantity: positiveDecimal,
+  unit: measurementUnit,
+  wastePercent: nonNegativeDecimal.default(0),
+});
+export type AddComponentMaterialInput = z.infer<typeof addComponentMaterialSchema>;
+
+// عملية على مكوّن: إمّا من المكتبة (operationId) أو استثنائية inline.
+export const addComponentOperationSchema = z.object({
+  operationId: z.string().min(1).optional(),
+  // مطلوبة فقط للعملية الاستثنائية (inline):
+  name: z.string().trim().min(1).optional(),
+  costModel: operationCostModel.optional(),
+  standardCost: positiveDecimal.optional(),
+  param: positiveDecimal.default(1),
+  sortOrder: z.number().int().min(0).default(0),
+  // حفظ العملية الاستثنائية في المكتبة لإعادة الاستخدام.
+  saveToLibrary: z.boolean().default(false),
+});
+export type AddComponentOperationInput = z.infer<typeof addComponentOperationSchema>;
