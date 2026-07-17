@@ -8,6 +8,7 @@ import type {
   ContactDepartment,
   DealStatus,
   DealType,
+  CommunicationType,
 } from "@/generated/prisma/client";
 
 export type {
@@ -17,7 +18,20 @@ export type {
   ContactDepartment,
   DealStatus,
   DealType,
+  CommunicationType,
 };
+
+export interface CommunicationView {
+  id: string;
+  customerId: string;
+  contactId: string | null;
+  type: CommunicationType;
+  summary: string;
+  nextStep: string | null;
+  nextFollowUpDate: Date | null;
+  createdByUserId: string;
+  createdAt: Date;
+}
 
 export interface CustomerView {
   id: string;

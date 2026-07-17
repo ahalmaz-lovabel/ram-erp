@@ -12,6 +12,9 @@ export const CustomersPermissions = {
   createDeal: "deals.create",
   updateDeal: "deals.update",
   changeDealStatus: "deals.change_status",
+
+  logCommunication: "customers.log_communication",
+  viewCommunications: "customers.view_communications",
 } as const;
 
 export type CustomersPermission = (typeof CustomersPermissions)[keyof typeof CustomersPermissions];
@@ -26,4 +29,6 @@ export const CustomersPermissionLabels: Record<keyof typeof CustomersPermissions
   createDeal: "إضافة صفقة",
   updateDeal: "تعديل صفقة",
   changeDealStatus: "تغيير حالة صفقة",
+  logCommunication: "تسجيل متابعة/تواصل",
+  viewCommunications: "عرض سجل التواصل",
 };

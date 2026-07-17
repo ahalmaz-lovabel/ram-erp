@@ -570,12 +570,40 @@ model Customer {
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
-  contacts CustomerContact[]
-  deals    Deal[]
+  contacts       CustomerContact[]
+  deals          Deal[]
+  communications CustomerCommunication[]
 
   @@index([status])
   @@index([type])
   @@index([responsibleUserId])
+}
+
+// نوع التواصل مع العميل (§14).
+enum CommunicationType {
+  call // اتصال
+  whatsapp // واتساب
+  email // بريد
+  visit // زيارة
+  meeting // اجتماع
+}
+
+// سجل التواصل والمتابعة داخل ملف العميل (§14): ما تم والخطوة التالية.
+model CustomerCommunication {
+  id               String            @id @default(cuid())
+  customerId       String
+  customer         Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contactId        String?
+  contact          CustomerContact?  @relation(fields: [contactId], references: [id])
+  type             CommunicationType
+  summary          String // ملخص ما حدث
+  nextStep         String? // الخطوة التالية
+  nextFollowUpDate DateTime? // موعد المتابعة القادمة
+  createdByUserId  String // الموظف المسؤول عن المتابعة
+  createdAt        DateTime          @default(now())
+
+  @@index([customerId])
+  @@index([nextFollowUpDate])
 }
 
 // جهة تواصل داخل العميل (§5). العميل قد يكون مؤسسة بأكثر من جهة.
@@ -594,7 +622,8 @@ model CustomerContact {
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
 
-  deals Deal[]
+  deals          Deal[]
+  communications CustomerCommunication[]
 
   @@index([customerId])
 }

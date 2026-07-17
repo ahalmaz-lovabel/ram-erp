@@ -147,3 +147,16 @@ export const changeDealStatusSchema = z.object({
   reason: optionalText,
 });
 export type ChangeDealStatusInput = z.infer<typeof changeDealStatusSchema>;
+
+// ===== سجل التواصل والمتابعة (§14) =====
+
+const communicationType = z.enum(["call", "whatsapp", "email", "visit", "meeting"]);
+
+export const logCommunicationSchema = z.object({
+  type: communicationType,
+  contactId: z.string().min(1).optional(),
+  summary: z.string().trim().min(1, "ملخص التواصل مطلوب"),
+  nextStep: optionalText,
+  nextFollowUpDate: z.coerce.date().optional(),
+});
+export type LogCommunicationInput = z.infer<typeof logCommunicationSchema>;

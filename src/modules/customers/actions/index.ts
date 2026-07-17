@@ -7,6 +7,7 @@ import { requireCurrentUserId } from "@/modules/shared/auth/session";
 import { createCustomer, updateCustomer, archiveCustomer } from "../services/CustomersService";
 import { addContact, updateContact, removeContact } from "../services/ContactService";
 import { createDeal, updateDeal, changeDealStatus } from "../services/DealService";
+import { logCommunication } from "../services/CommunicationService";
 import {
   createCustomerSchema,
   updateCustomerSchema,
@@ -15,6 +16,7 @@ import {
   createDealSchema,
   updateDealSchema,
   changeDealStatusSchema,
+  logCommunicationSchema,
 } from "../services/customersSchemas";
 
 // ===== العملاء =====
@@ -84,5 +86,14 @@ export async function changeDealStatusAction(dealId: string, raw: unknown) {
   return wrapAction(async () => {
     const actorUserId = await requireCurrentUserId();
     return changeDealStatus(actorUserId, dealId, changeDealStatusSchema.parse(raw));
+  });
+}
+
+// ===== سجل التواصل =====
+
+export async function logCommunicationAction(customerId: string, raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return logCommunication(actorUserId, customerId, logCommunicationSchema.parse(raw));
   });
 }
