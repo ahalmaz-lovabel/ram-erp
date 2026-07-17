@@ -7,6 +7,7 @@ export const ProductsErrorCodes = {
   INVALID_CONVERSION_FACTOR: "INVALID_CONVERSION_FACTOR", // معامل التحويل يجب أن يكون > 0
   LIST_ATTRIBUTE_NEEDS_VALUES: "LIST_ATTRIBUTE_NEEDS_VALUES", // سمة "اختيار من قائمة" تحتاج قيمًا
   OPERATION_NAME_TAKEN: "OPERATION_NAME_TAKEN", // اسم عملية التصنيع مستخدم بالفعل
+  INCOMPATIBLE_UNITS: "INCOMPATIBLE_UNITS", // وحدة كمية الخامة في الـ BOM لا تطابق بُعد وحدة الخامة
 } as const;
 
 export type ProductsErrorCode = (typeof ProductsErrorCodes)[keyof typeof ProductsErrorCodes];
