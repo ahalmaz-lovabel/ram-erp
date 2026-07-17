@@ -35,6 +35,14 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// ===== SHARED: SEQUENCES =====
+// عدّادات الترقيم التسلسلي الآمنة من التعارض (فواتير، عروض، صفقات، أوامر...).
+// الزيادة تتم ذريًا (atomic) داخل transaction عبر sequenceGenerator.
+model Sequence {
+  key   String @id // مفتاح العدّاد، مثل "deal" أو "invoice"
+  value Int    @default(0)
+}
+
 // ===== USERS =====
 // موديول المستخدمين والأدوار والصلاحيات. مبني على docs/analysis/users-analysis.md
 // مبدأ أساسي: المنع الافتراضي — لا صلاحية إلا إذا مُنحت صراحة.
@@ -138,8 +146,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  directPermissions UserPermissionGrant[]
-  sessions          Session[]
+  directPermissions    UserPermissionGrant[]
+  sessions             Session[]
+  responsibleCustomers Customer[]
+  responsibleDeals     Deal[]
 
   @@index([roleId])
   @@index([status])
@@ -476,4 +486,140 @@ model ComponentOperation {
   createdAt    DateTime           @default(now())
 
   @@index([componentId])
+}
+
+// ===== CUSTOMERS =====
+// موديول العملاء وجهات التواصل والصفقات. مبني على docs/analysis/customers-analysis.md
+// (§4، §5، §6). العروض/الفواتير/الدفعات/الضمانات تُبنى في موديولاتها وتُربط بالعميل.
+
+enum CustomerType {
+  person // شخص
+  organization // مؤسسة
+  company // شركة
+  club // نادي
+  gym // جيم
+  distributor // موزع
+}
+
+enum CustomerStatus {
+  prospect // محتمل
+  active // نشط
+  inactive // غير نشط
+  archived // مؤرشف
+}
+
+// مصدر العميل/الصفقة (§4، §6).
+enum CustomerSource {
+  ad // إعلان
+  referral // ترشيح
+  visit // زيارة
+  call // اتصال
+  exhibition // معرض
+  existing // عميل قديم
+}
+
+enum ContactDepartment {
+  management // إدارة
+  purchasing // مشتريات
+  accounts // حسابات
+  website // موقع
+  receiving // استلام
+}
+
+enum DealStatus {
+  interested // عميل مهتم
+  contacting // جاري التواصل
+  quote_sent // تم إرسال عرض سعر
+  negotiation // مرحلة التفاوض
+  accepted // مقبولة
+  rejected // مرفوضة
+  postponed // مؤجلة
+  converted // تحوّلت لأمر بيع
+  cancelled // ملغاة
+}
+
+enum DealType {
+  direct_sale // بيع مباشر
+  gym_setup // تجهيز جيم
+  supply_only // توريد فقط
+  supply_install // توريد وتركيب
+  later_addition // إضافة لاحقة
+}
+
+// العميل: فرد أو مؤسسة (§4). "عليه مديونية" فلتر مشتق من الرصيد (accounting لاحقًا)،
+// و"مهم" علم مستقل (isImportant). المستندات الرسمية تحفظ بيانات العميل وقت الإصدار.
+model Customer {
+  id                 String          @id @default(cuid())
+  code               String          @unique
+  name               String
+  type               CustomerType
+  status             CustomerStatus  @default(prospect)
+  isImportant        Boolean         @default(false) // عميل مهم
+  phone              String?
+  whatsapp           String?
+  email              String?
+  address            String?
+  city               String?
+  country            String?
+  taxNumber          String?
+  commercialRegister String?
+  source             CustomerSource?
+  notes              String?
+  responsibleUserId  String? // الموظف المسؤول
+  responsibleUser    User?           @relation(fields: [responsibleUserId], references: [id])
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  contacts CustomerContact[]
+  deals    Deal[]
+
+  @@index([status])
+  @@index([type])
+  @@index([responsibleUserId])
+}
+
+// جهة تواصل داخل العميل (§5). العميل قد يكون مؤسسة بأكثر من جهة.
+model CustomerContact {
+  id         String             @id @default(cuid())
+  customerId String
+  customer   Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String
+  jobTitle   String?
+  phone      String?
+  whatsapp   String?
+  email      String?
+  isPrimary  Boolean            @default(false) // جهة التواصل الأساسية
+  department ContactDepartment?
+  notes      String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  deals Deal[]
+
+  @@index([customerId])
+}
+
+// الصفقة: فرصة بيع/مشروع مع العميل (§6). رقمها تسلسلي عبر sequenceGenerator.
+model Deal {
+  id                String           @id @default(cuid())
+  number            String           @unique // رقم الصفقة (DEAL-xxxxx)
+  name              String
+  customerId        String
+  customer          Customer         @relation(fields: [customerId], references: [id])
+  contactId         String?
+  contact           CustomerContact? @relation(fields: [contactId], references: [id])
+  responsibleUserId String?
+  responsibleUser   User?            @relation(fields: [responsibleUserId], references: [id])
+  source            CustomerSource?
+  type              DealType
+  estimatedValue    Decimal? // قيمة مالية → Decimal
+  expectedCloseDate DateTime?
+  status            DealStatus       @default(interested)
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([responsibleUserId])
 }

@@ -6,5 +6,6 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("@/modules/users/register");
     await import("@/modules/products/register");
+    await import("@/modules/customers/register");
   }
 }
