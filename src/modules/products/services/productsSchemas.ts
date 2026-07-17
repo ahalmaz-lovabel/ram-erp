@@ -189,3 +189,17 @@ export const addComponentOperationSchema = z.object({
   saveToLibrary: z.boolean().default(false),
 });
 export type AddComponentOperationInput = z.infer<typeof addComponentOperationSchema>;
+
+// ===== التسعير والربحية (§12، §13) =====
+
+// قيمة عشرية موجبة قابلة للمسح (null) أو الترك (undefined).
+const optionalPositiveDecimal = positiveDecimal.nullable().optional();
+
+export const updateProductPricingSchema = z.object({
+  salePrice: optionalPositiveDecimal,
+  minSalePrice: optionalPositiveDecimal,
+  minMarginPercent: nonNegativeDecimal.nullable().optional(),
+  manualCost: optionalPositiveDecimal, // تكلفة يدوية بديلة (null = إلغاؤها)
+  reason: optionalText,
+});
+export type UpdateProductPricingInput = z.infer<typeof updateProductPricingSchema>;

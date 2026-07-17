@@ -29,7 +29,9 @@ export const ProductsPermissions = {
   viewProducts: "products.view",
   createProduct: "products.create",
   manageProductBom: "products.manage_bom", // بناء/تعديل شجرة المكوّنات والوصفة (حساس §20)
+  updateProductPrice: "products.update_price", // تعديل سعر البيع/التكلفة اليدوية (حساس §20)
   viewProductCost: "products.view_cost", // رؤية تكلفة الإنتاج (حساس §12)
+  viewProductProfit: "products.view_profit", // رؤية الربح والهامش (حساس §12)
   archiveProduct: "products.archive",
 } as const;
 
@@ -52,6 +54,8 @@ export const ProductsPermissionLabels: Record<keyof typeof ProductsPermissions, 
   viewProducts: "عرض المنتجات",
   createProduct: "إضافة منتج",
   manageProductBom: "بناء/تعديل مكوّنات المنتج",
+  updateProductPrice: "تعديل سعر المنتج",
   viewProductCost: "عرض تكلفة المنتج",
+  viewProductProfit: "عرض ربح وهامش المنتج",
   archiveProduct: "أرشفة منتج",
 };

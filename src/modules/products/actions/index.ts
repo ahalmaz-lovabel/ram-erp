@@ -13,7 +13,12 @@ import {
 } from "../services/MaterialService";
 import { createAttribute, updateAttribute, archiveAttribute } from "../services/AttributeService";
 import { createOperation, updateOperation, archiveOperation } from "../services/OperationService";
-import { createProduct, recalculateProductCost } from "../services/ProductService";
+import {
+  createProduct,
+  recalculateProductCost,
+  updateProductPricing,
+  getProductPricing,
+} from "../services/ProductService";
 import {
   addComponent,
   addComponentMaterial,
@@ -31,6 +36,7 @@ import {
   addComponentSchema,
   addComponentMaterialSchema,
   addComponentOperationSchema,
+  updateProductPricingSchema,
 } from "../services/productsSchemas";
 
 // ===== مكتبة الخامات =====
@@ -143,5 +149,19 @@ export async function recalculateProductCostAction(productId: string) {
   return wrapAction(async () => {
     const actorUserId = await requireCurrentUserId();
     return recalculateProductCost(actorUserId, productId);
+  });
+}
+
+export async function updateProductPricingAction(productId: string, raw: unknown) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return updateProductPricing(actorUserId, productId, updateProductPricingSchema.parse(raw));
+  });
+}
+
+export async function getProductPricingAction(productId: string) {
+  return wrapAction(async () => {
+    const actorUserId = await requireCurrentUserId();
+    return getProductPricing(actorUserId, productId);
   });
 }

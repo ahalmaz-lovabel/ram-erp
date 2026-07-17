@@ -357,13 +357,59 @@ model Product {
   name           String
   status         ProductStatus @default(active)
   productionCost Decimal       @default(0) // تكلفة الإنتاج المجمّعة (cached من محرك التكلفة)
+  manualCost     Decimal? // تكلفة يدوية اختيارية بديلة (§12، بصلاحية)
   costUpdatedAt  DateTime? // آخر إعادة حساب للتكلفة
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
 
-  components Component[]
+  // التسعير والربحية (§12). الربح والهامش محسوبان من السعر والتكلفة الفعّالة.
+  salePrice        Decimal? // سعر البيع الافتراضي
+  minSalePrice     Decimal? // أقل سعر بيع مسموح
+  minMarginPercent Decimal? // حد أدنى لهامش الربح (لتنبيه عند الانخفاض عنه)
+  priceUpdatedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  components   Component[]
+  priceHistory ProductPriceHistory[]
+  costHistory  ProductCostHistory[]
 
   @@index([status])
+}
+
+// سجل تعديل سعر البيع (§13).
+model ProductPriceHistory {
+  id                     String   @id @default(cuid())
+  productId              String
+  product                Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  oldSalePrice           Decimal?
+  newSalePrice           Decimal?
+  oldMinSalePrice        Decimal?
+  newMinSalePrice        Decimal?
+  productionCostAtChange Decimal // تكلفة الإنتاج وقت التعديل
+  marginBefore           Decimal?
+  marginAfter            Decimal?
+  reason                 String?
+  changedByUserId        String
+  createdAt              DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+// سجل تغيّر تكلفة الإنتاج (§14). المصدر يوضّح سبب التغيير.
+model ProductCostHistory {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  oldCost         Decimal
+  newCost         Decimal
+  // material_price | recipe | manual | recalc
+  source          String
+  changedByUserId String
+  createdAt       DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
 }
 
 // مكوّن في شجرة المنتج — ذاتي المرجع (تجميعة فرعية أو قطعة نهائية).

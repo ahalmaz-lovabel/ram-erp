@@ -7,6 +7,7 @@ import { ProductsPermissions } from "../permissions";
 import { ProductsErrorCodes } from "../errors";
 import type { MaterialView } from "../types";
 import { computeBaseUnitPrice } from "./productsRules";
+import { recomputeProductsUsingMaterialTx } from "./ProductService";
 import type {
   CreateMaterialInput,
   UpdateMaterialInput,
@@ -167,6 +168,10 @@ export async function updateMaterialPrice(
       },
     });
 
+    // تتالي التكلفة: أعِد حساب تكلفة كل المنتجات التي تستخدم هذه الخامة (§8).
+    // لا يغيّر سعر بيعها تلقائيًا (§11) — يُسجَّل في سجل التكلفة فقط.
+    const affected = await recomputeProductsUsingMaterialTx(tx, materialId, actorUserId);
+
     await recordAuditLog(
       {
         userId: actorUserId,
@@ -177,6 +182,7 @@ export async function updateMaterialPrice(
         newValue: {
           purchaseUnitPrice: material.purchaseUnitPrice.toString(),
           reason: input.reason ?? null,
+          affectedProducts: affected,
         },
       },
       tx
