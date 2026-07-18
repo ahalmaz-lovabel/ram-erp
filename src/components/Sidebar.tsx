@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const nav: { href: string; label: string; ready: boolean }[] = [
   { href: "/dashboard", label: "لوحة التحكم", ready: true },
-  { href: "/customers", label: "العملاء", ready: false },
+  { href: "/customers", label: "العملاء", ready: true },
   { href: "/products", label: "المنتجات", ready: false },
   { href: "/users", label: "المستخدمون", ready: false },
   { href: "/accounting", label: "الحسابات", ready: false },
@@ -12,7 +15,9 @@ const nav: { href: string; label: string; ready: boolean }[] = [
   { href: "/production", label: "الإنتاج", ready: false },
 ];
 
-export function Sidebar({ current }: { current: string }) {
+export function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <aside
       className="flex w-[280px] shrink-0 flex-col p-7 text-white"
@@ -20,7 +25,6 @@ export function Sidebar({ current }: { current: string }) {
         background: "linear-gradient(180deg, oklch(0.16 0.005 30), oklch(0.1 0.005 30))",
       }}
     >
-      {/* Logo */}
       <div
         className="mb-6 flex items-center gap-3 border-b pb-6"
         style={{ borderColor: "oklch(1 0 0 / 0.12)" }}
@@ -45,8 +49,8 @@ export function Sidebar({ current }: { current: string }) {
 
       <nav className="flex flex-col gap-1">
         {nav.map((it) => {
-          const active = current === it.href;
-          const Dot = (
+          const active = pathname === it.href || pathname.startsWith(it.href + "/");
+          const dot = (
             <span
               className="h-2 w-2 shrink-0 rounded-full"
               style={{
@@ -56,7 +60,7 @@ export function Sidebar({ current }: { current: string }) {
           );
           const inner = (
             <span className="flex items-center gap-2.5">
-              {Dot}
+              {dot}
               {it.label}
             </span>
           );

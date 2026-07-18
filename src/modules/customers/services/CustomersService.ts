@@ -1,12 +1,72 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { requirePermission } from "@/modules/shared/permissions";
 import { recordAuditLog } from "@/modules/shared/audit";
 import { AppError, CommonErrorCodes } from "@/modules/shared/errors/AppError";
 import { isUniqueConstraintError } from "@/modules/shared/errors/prismaErrors";
 import { CustomersPermissions } from "../permissions";
 import { CustomersErrorCodes } from "../errors";
-import type { CustomerView } from "../types";
+import type { CustomerView, CustomerStatus, CustomerType } from "../types";
 import type { CreateCustomerInput, UpdateCustomerInput } from "./customersSchemas";
+
+/** عنصر في قائمة العملاء (مع عدّادات جهات التواصل والصفقات). */
+export type CustomerListItem = CustomerView & {
+  contactsCount: number;
+  dealsCount: number;
+};
+
+/**
+ * قائمة العملاء مع بحث وفلترة (§2). فحص صلاحية العرض server-side.
+ */
+export async function listCustomers(
+  actorUserId: string,
+  filters: { search?: string; status?: CustomerStatus; type?: CustomerType } = {}
+): Promise<CustomerListItem[]> {
+  await requirePermission(actorUserId, CustomersPermissions.viewCustomers);
+
+  const where: Prisma.CustomerWhereInput = {};
+  if (filters.status) where.status = filters.status;
+  if (filters.type) where.type = filters.type;
+  if (filters.search) {
+    const s = filters.search.trim();
+    where.OR = [
+      { name: { contains: s, mode: "insensitive" } },
+      { code: { contains: s, mode: "insensitive" } },
+      { phone: { contains: s } },
+      { whatsapp: { contains: s } },
+      { email: { contains: s, mode: "insensitive" } },
+    ];
+  }
+
+  const rows = await prisma.customer.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: { _count: { select: { contacts: true, deals: true } } },
+  });
+
+  return rows.map((r) => ({
+    ...r,
+    contactsCount: r._count.contacts,
+    dealsCount: r._count.deals,
+  }));
+}
+
+/** ملف العميل الكامل: بياناته + جهات التواصل + الصفقات (§3). */
+export async function getCustomerProfile(actorUserId: string, customerId: string) {
+  await requirePermission(actorUserId, CustomersPermissions.viewCustomers);
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+    include: {
+      contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
+      deals: { orderBy: { createdAt: "desc" } },
+    },
+  });
+  if (!customer) {
+    throw new AppError(CommonErrorCodes.NOT_FOUND, "العميل غير موجود", 404);
+  }
+  return customer;
+}
 
 /**
  * العملاء (§4). الحذف ممنوع افتراضيًا — أرشفة فقط (§2، CLAUDE #16). المستندات

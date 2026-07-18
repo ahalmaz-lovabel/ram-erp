@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar current="/dashboard" />
+      <Sidebar />
       <main className="flex flex-1 flex-col gap-8 px-10 py-8">
         {/* Topbar: user block */}
         <div className="flex items-center justify-end">
