@@ -11,6 +11,9 @@ import {
   dealStatusLabel,
   dealTypeLabel,
 } from "@/modules/customers/labels";
+import { CustomerActions } from "./CustomerActions";
+import { AddContactForm } from "./AddContactForm";
+import { AddDealForm } from "./AddDealForm";
 
 export default async function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -38,23 +41,26 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/customers" className="text-sm text-muted hover:text-brand">
-          ← رجوع للعملاء
-        </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-[26px] font-extrabold text-ink">{customer.name}</h1>
-          <span
-            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-            style={{ background: b.bg, color: b.color }}
-          >
-            {customerStatusLabel[customer.status]}
-          </span>
-          {customer.isImportant && <span className="text-sm text-amber-600">★ عميل مهم</span>}
+      <div className="flex items-start justify-between">
+        <div>
+          <Link href="/customers" className="text-sm text-muted hover:text-brand">
+            ← رجوع للعملاء
+          </Link>
+          <div className="mt-2 flex items-center gap-3">
+            <h1 className="text-[26px] font-extrabold text-ink">{customer.name}</h1>
+            <span
+              className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              style={{ background: b.bg, color: b.color }}
+            >
+              {customerStatusLabel[customer.status]}
+            </span>
+            {customer.isImportant && <span className="text-sm text-amber-600">★ عميل مهم</span>}
+          </div>
+          <div className="mt-1 font-slug text-sm text-muted" dir="ltr">
+            {customer.code} · {customerTypeLabel[customer.type]}
+          </div>
         </div>
-        <div className="mt-1 font-slug text-sm text-muted" dir="ltr">
-          {customer.code} · {customerTypeLabel[customer.type]}
-        </div>
+        <CustomerActions customerId={customer.id} archived={customer.status === "archived"} />
       </div>
 
       {/* البيانات الأساسية */}
@@ -80,9 +86,10 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
 
       {/* جهات التواصل */}
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="mb-3 text-sm font-bold text-ink">
-          جهات التواصل ({customer.contacts.length})
-        </h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-ink">جهات التواصل ({customer.contacts.length})</h2>
+          <AddContactForm customerId={customer.id} />
+        </div>
         {customer.contacts.length === 0 ? (
           <p className="text-sm text-muted">لا توجد جهات تواصل.</p>
         ) : (
@@ -120,7 +127,10 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
 
       {/* الصفقات */}
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="mb-3 text-sm font-bold text-ink">الصفقات ({customer.deals.length})</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-ink">الصفقات ({customer.deals.length})</h2>
+          <AddDealForm customerId={customer.id} />
+        </div>
         {customer.deals.length === 0 ? (
           <p className="text-sm text-muted">لا توجد صفقات.</p>
         ) : (
