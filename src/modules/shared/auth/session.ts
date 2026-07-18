@@ -1,4 +1,7 @@
 import { cookies } from "next/headers";
+// أثر جانبي: يضمن تسجيل صلاحيات الموديولات وحقن الـ resolver في سياق التطبيق
+// قبل أي فحص صلاحية (getCurrentUser/requireCurrentUserId يسبقان requirePermission).
+import "@/modules/bootstrap";
 import { prisma } from "@/lib/prisma";
 import { AppError, CommonErrorCodes } from "@/modules/shared/errors/AppError";
 import type { UserStatus } from "@/generated/prisma/client";
