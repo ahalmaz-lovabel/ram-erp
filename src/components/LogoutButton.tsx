@@ -17,7 +17,7 @@ export function LogoutButton() {
         })
       }
       disabled={pending}
-      className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-red-600 disabled:opacity-60"
+      className="rounded-lg border border-line bg-white px-4 py-2 text-[13px] font-semibold text-ink transition hover:bg-canvas disabled:opacity-60"
     >
       {pending ? "…" : "تسجيل الخروج"}
     </button>

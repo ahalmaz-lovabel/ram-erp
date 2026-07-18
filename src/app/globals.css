@@ -1,9 +1,28 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-sans: var(--font-cairo);
+/* رموز التصميم المعتمدة (design handoff — لوحة تحكم إدارة المصنع). */
+@theme {
+  --color-canvas: oklch(0.97 0.006 60); /* خلفية دافئة off-white */
+  --color-surface: oklch(0.985 0.003 60); /* سطح البطاقات */
+  --color-line: oklch(0.9 0.005 40); /* حدود */
+  --color-ink: oklch(0.2 0.01 30); /* نص أساسي */
+  --color-muted: oklch(0.5 0.005 30); /* نص ثانوي */
+  --color-brand: oklch(0.45 0.2 25); /* أحمر ملكي — لكنة */
+  --color-brand-dark: oklch(0.35 0.2 25);
+
+  --font-sans: var(--font-tajawal);
+  --font-slug: var(--font-plex);
 }
 
 body {
-  font-family: var(--font-cairo), system-ui, sans-serif;
+  font-family: var(--font-tajawal), system-ui, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.85 0.01 280);
+  border-radius: 8px;
 }

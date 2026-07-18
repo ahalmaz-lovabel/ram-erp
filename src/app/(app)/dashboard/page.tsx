@@ -11,57 +11,126 @@ async function getStats() {
   return { customers, deals, products, materials };
 }
 
-const statusLabel: Record<string, { text: string; cls: string }> = {
-  stable: { text: "مكتمل", cls: "bg-green-100 text-green-700" },
-  "in-progress": { text: "قيد التنفيذ", cls: "bg-amber-100 text-amber-700" },
-  planned: { text: "مخطّط", cls: "bg-slate-100 text-slate-500" },
+const BRAND = "oklch(0.45 0.2 25)";
+const INK = "oklch(0.2 0.01 30)";
+
+const badge: Record<string, { text: string; bg: string; color: string }> = {
+  stable: { text: "مكتمل", bg: "oklch(0.92 0.01 30)", color: "oklch(0.2 0.01 30)" },
+  "in-progress": { text: "قيد التنفيذ", bg: BRAND, color: "white" },
+  planned: { text: "مخطط", bg: "oklch(0.88 0.01 30)", color: "oklch(0.3 0.01 30)" },
 };
 
 export default async function DashboardPage() {
   const stats = await getStats();
 
-  const cards = [
-    { label: "العملاء", value: stats.customers },
-    { label: "الصفقات", value: stats.deals },
-    { label: "المنتجات", value: stats.products },
-    { label: "الخامات", value: stats.materials },
+  const statCards = [
+    { label: "الخامات", value: stats.materials, color: BRAND, circle: false, cta: "أضف خامة" },
+    { label: "المنتجات", value: stats.products, color: INK, circle: false, cta: "أضف منتج" },
+    { label: "الصفقات", value: stats.deals, color: BRAND, circle: true, cta: "أضف صفقة" },
+    { label: "العملاء", value: stats.customers, color: INK, circle: true, cta: "أضف عميل" },
+  ];
+
+  const quickActions = [
+    { label: "عميل جديد", color: BRAND },
+    { label: "منتج جديد", color: INK },
+    { label: "فاتورة جديدة", color: BRAND },
+    { label: "صفقة جديدة", color: INK },
   ];
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold text-slate-900">لوحة التحكم</h1>
-      <p className="mt-1 text-slate-500">نظرة عامة على النظام وأقسامه.</p>
+    <div className="flex flex-col gap-8">
+      {/* Title */}
+      <div>
+        <h1 className="text-[26px] font-extrabold text-ink">لوحة التحكم</h1>
+        <p className="mt-1 text-sm text-muted">نظرة عامة على النظام وأقسامه</p>
+      </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <div className="text-sm text-slate-500">{c.label}</div>
-            <div className="mt-1 text-3xl font-bold text-slate-900">{c.value}</div>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {statCards.map((s) => (
+          <div
+            key={s.label}
+            className="flex flex-col gap-3.5 rounded-[14px] border border-line bg-surface p-5"
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="flex h-[38px] w-[38px] items-center justify-center rounded-[10px]"
+                style={{ background: "oklch(0.94 0.01 30)" }}
+              >
+                <span
+                  className="h-4 w-4"
+                  style={{ background: s.color, borderRadius: s.circle ? "50%" : "4px" }}
+                />
+              </span>
+              <span className="text-[13px] font-semibold text-muted">{s.label}</span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className="text-[32px] font-extrabold text-ink">{s.value}</span>
+              <span
+                className="cursor-default text-xs font-bold"
+                style={{ color: s.color }}
+                title="قريبًا"
+              >
+                {s.cta} ←
+              </span>
+            </div>
           </div>
         ))}
       </div>
 
-      <h2 className="mt-8 text-lg font-bold text-slate-800">أقسام النظام</h2>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {moduleRegistry.map((m) => {
-          const s = statusLabel[m.status] ?? statusLabel.planned;
-          return (
-            <div
-              key={m.name}
-              className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
+      {/* Quick actions */}
+      <div className="flex items-center gap-6 rounded-[14px] border border-line bg-surface px-6 py-5">
+        <span className="shrink-0 text-sm font-bold" style={{ color: "oklch(0.3 0.005 30)" }}>
+          إجراءات سريعة
+        </span>
+        <span className="h-6 w-px shrink-0" style={{ background: "oklch(0.88 0.005 30)" }} />
+        <div className="flex flex-wrap gap-2.5">
+          {quickActions.map((q) => (
+            <span
+              key={q.label}
+              className="flex cursor-default items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-semibold"
+              style={{ color: "oklch(0.3 0.005 30)" }}
+              title="قريبًا"
             >
-              <div>
-                <div className="font-semibold text-slate-800">{m.label}</div>
-                <div className="text-xs text-slate-400" dir="ltr">
-                  {m.name}
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: q.color }} />
+              {q.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Sections */}
+      <div>
+        <h2 className="mb-4 text-lg font-extrabold text-ink">أقسام النظام</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {moduleRegistry.map((m) => {
+            const b = badge[m.status] ?? badge.planned;
+            return (
+              <div
+                key={m.name}
+                className="flex min-h-[110px] cursor-default flex-col justify-between gap-8 rounded-[14px] border border-line bg-surface p-5 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-brand hover:shadow-lg"
+              >
+                <div className="flex items-start justify-between">
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                    style={{ background: b.bg, color: b.color }}
+                  >
+                    {b.text}
+                  </span>
+                  <span className="text-lg" style={{ color: "oklch(0.65 0.005 30)" }}>
+                    ↖
+                  </span>
+                </div>
+                <div>
+                  <div className="text-base font-bold text-ink">{m.label}</div>
+                  <div className="font-slug mt-0.5 text-xs text-muted" dir="ltr">
+                    {m.name}
+                  </div>
                 </div>
               </div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${s.cls}`}>
-                {s.text}
-              </span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

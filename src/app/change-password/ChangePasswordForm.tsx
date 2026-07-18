@@ -80,7 +80,8 @@ export function ChangePasswordForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 rounded-lg bg-indigo-600 px-4 py-2.5 font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+        style={{ background: "var(--color-brand)" }}
+        className="mt-2 rounded-lg px-4 py-2.5 font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
       >
         {pending ? "جارٍ الحفظ…" : "تغيير كلمة المرور"}
       </button>

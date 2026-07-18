@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
-import { Cairo } from "next/font/google";
+import { Tajawal, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-const cairo = Cairo({
-  variable: "--font-cairo",
+const tajawal = Tajawal({
+  variable: "--font-tajawal",
   subsets: ["arabic", "latin"],
+  weight: ["400", "500", "700", "800"],
+});
+
+const plex = IBM_Plex_Sans({
+  variable: "--font-plex",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -14,8 +21,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ar" dir="rtl" className={`${cairo.variable} h-full antialiased`}>
-      <body className="min-h-full bg-slate-100 text-slate-900">{children}</body>
+    <html lang="ar" dir="rtl" className={`${tajawal.variable} ${plex.variable} h-full antialiased`}>
+      <body className="min-h-full bg-canvas text-ink">{children}</body>
     </html>
   );
 }
