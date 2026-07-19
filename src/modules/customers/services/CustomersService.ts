@@ -60,6 +60,7 @@ export async function getCustomerProfile(actorUserId: string, customerId: string
     include: {
       contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
       deals: { orderBy: { createdAt: "desc" } },
+      communications: { orderBy: { createdAt: "desc" }, take: 50 },
     },
   });
   if (!customer) {

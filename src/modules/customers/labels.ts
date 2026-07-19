@@ -7,7 +7,16 @@ import type {
   ContactDepartment,
   DealStatus,
   DealType,
+  CommunicationType,
 } from "./types";
+
+export const communicationTypeLabel: Record<CommunicationType, string> = {
+  call: "اتصال",
+  whatsapp: "واتساب",
+  email: "بريد",
+  visit: "زيارة",
+  meeting: "اجتماع",
+};
 
 export const customerTypeLabel: Record<CustomerType, string> = {
   person: "فرد",

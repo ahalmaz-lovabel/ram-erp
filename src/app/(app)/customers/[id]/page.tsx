@@ -7,13 +7,14 @@ import {
   customerTypeLabel,
   customerStatusLabel,
   customerStatusBadge,
-  contactDepartmentLabel,
-  dealStatusLabel,
-  dealTypeLabel,
+  communicationTypeLabel,
 } from "@/modules/customers/labels";
 import { CustomerActions } from "./CustomerActions";
 import { AddContactForm } from "./AddContactForm";
 import { AddDealForm } from "./AddDealForm";
+import { AddCommunicationForm } from "./AddCommunicationForm";
+import { ContactRow } from "./ContactRow";
+import { DealRow } from "./DealRow";
 
 export default async function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -95,31 +96,19 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
         ) : (
           <div className="flex flex-col gap-2">
             {customer.contacts.map((ct) => (
-              <div
+              <ContactRow
                 key={ct.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-line bg-white px-4 py-3"
-              >
-                <span className="font-semibold text-ink">{ct.name}</span>
-                {ct.isPrimary && (
-                  <span
-                    className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
-                    style={{ background: "var(--color-brand)" }}
-                  >
-                    أساسية
-                  </span>
-                )}
-                {ct.jobTitle && <span className="text-sm text-muted">{ct.jobTitle}</span>}
-                {ct.department && (
-                  <span className="text-xs text-muted">
-                    · {contactDepartmentLabel[ct.department]}
-                  </span>
-                )}
-                {ct.phone && (
-                  <span className="text-sm text-muted" dir="ltr">
-                    {ct.phone}
-                  </span>
-                )}
-              </div>
+                contact={{
+                  id: ct.id,
+                  name: ct.name,
+                  jobTitle: ct.jobTitle,
+                  phone: ct.phone,
+                  whatsapp: ct.whatsapp,
+                  email: ct.email,
+                  isPrimary: ct.isPrimary,
+                  department: ct.department,
+                }}
+              />
             ))}
           </div>
         )}
@@ -134,28 +123,58 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
         {customer.deals.length === 0 ? (
           <p className="text-sm text-muted">لا توجد صفقات.</p>
         ) : (
-          <table className="w-full text-right text-sm">
-            <thead className="border-b border-line text-xs text-muted">
-              <tr>
-                <th className="py-2 font-semibold">الرقم</th>
-                <th className="py-2 font-semibold">الاسم</th>
-                <th className="py-2 font-semibold">النوع</th>
-                <th className="py-2 font-semibold">الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customer.deals.map((d) => (
-                <tr key={d.id} className="border-b border-line last:border-0">
-                  <td className="py-2 font-slug text-muted" dir="ltr">
-                    {d.number}
-                  </td>
-                  <td className="py-2 text-ink">{d.name}</td>
-                  <td className="py-2 text-muted">{dealTypeLabel[d.type]}</td>
-                  <td className="py-2 text-muted">{dealStatusLabel[d.status]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="flex flex-col gap-2">
+            {customer.deals.map((d) => (
+              <DealRow
+                key={d.id}
+                deal={{
+                  id: d.id,
+                  number: d.number,
+                  name: d.name,
+                  type: d.type,
+                  status: d.status,
+                  source: d.source,
+                  estimatedValue: d.estimatedValue?.toString() ?? null,
+                  expectedCloseDate: d.expectedCloseDate
+                    ? d.expectedCloseDate.toISOString().slice(0, 10)
+                    : null,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* سجل التواصل والمتابعة (§14) */}
+      <section className="rounded-xl border border-line bg-surface p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-ink">
+            سجل التواصل ({customer.communications.length})
+          </h2>
+          <AddCommunicationForm customerId={customer.id} />
+        </div>
+        {customer.communications.length === 0 ? (
+          <p className="text-sm text-muted">لا توجد متابعات.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {customer.communications.map((cm) => (
+              <div key={cm.id} className="rounded-lg border border-line bg-white px-4 py-3">
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <span className="rounded bg-canvas px-1.5 py-0.5 font-semibold text-ink">
+                    {communicationTypeLabel[cm.type]}
+                  </span>
+                  <span dir="ltr">{cm.createdAt.toISOString().slice(0, 10)}</span>
+                  {cm.nextFollowUpDate && (
+                    <span>· متابعة: {cm.nextFollowUpDate.toISOString().slice(0, 10)}</span>
+                  )}
+                </div>
+                <div className="mt-1 text-sm text-ink">{cm.summary}</div>
+                {cm.nextStep && (
+                  <div className="mt-1 text-xs text-muted">الخطوة التالية: {cm.nextStep}</div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>
