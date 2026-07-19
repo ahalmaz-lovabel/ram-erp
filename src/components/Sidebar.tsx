@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const nav: { href: string; label: string; ready: boolean }[] = [
   { href: "/dashboard", label: "لوحة التحكم", ready: true },
   { href: "/customers", label: "العملاء", ready: true },
-  { href: "/products", label: "المنتجات", ready: false },
+  { href: "/products", label: "المنتجات", ready: true },
   { href: "/users", label: "المستخدمون", ready: false },
   { href: "/accounting", label: "الحسابات", ready: false },
   { href: "/invoices", label: "الفواتير", ready: false },

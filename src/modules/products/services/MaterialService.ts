@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { requirePermission } from "@/modules/shared/permissions";
 import { recordAuditLog } from "@/modules/shared/audit";
 import { AppError, CommonErrorCodes } from "@/modules/shared/errors/AppError";
 import { isUniqueConstraintError } from "@/modules/shared/errors/prismaErrors";
 import { ProductsPermissions } from "../permissions";
 import { ProductsErrorCodes } from "../errors";
-import type { MaterialView } from "../types";
+import type { MaterialView, MaterialStatus } from "../types";
 import { computeBaseUnitPrice } from "./productsRules";
 import { recomputeProductsUsingMaterialTx } from "./ProductService";
 import type {
@@ -13,6 +14,26 @@ import type {
   UpdateMaterialInput,
   UpdateMaterialPriceInput,
 } from "./productsSchemas";
+
+/** قائمة الخامات مع بحث وفلترة (§8). فحص صلاحية العرض. */
+export async function listMaterials(
+  actorUserId: string,
+  filters: { search?: string; status?: MaterialStatus; category?: string } = {}
+): Promise<MaterialView[]> {
+  await requirePermission(actorUserId, ProductsPermissions.viewMaterials);
+  const where: Prisma.MaterialWhereInput = {};
+  if (filters.status) where.status = filters.status;
+  if (filters.category) where.category = filters.category;
+  if (filters.search) {
+    const s = filters.search.trim();
+    where.OR = [
+      { code: { contains: s, mode: "insensitive" } },
+      { name: { contains: s, mode: "insensitive" } },
+      { category: { contains: s, mode: "insensitive" } },
+    ];
+  }
+  return prisma.material.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 });
+}
 
 /**
  * مكتبة الخامات (تحليل §8). تعديل السعر عملية حساسة تُسجَّل في سجل الأسعار
