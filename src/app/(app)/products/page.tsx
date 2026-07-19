@@ -19,13 +19,13 @@ const cards: { href: string; title: string; desc: string; ready: boolean }[] = [
     href: "/products/attributes",
     title: "مكتبة السمات",
     desc: "خصائص المنتجات الموحّدة",
-    ready: false,
+    ready: true,
   },
   {
     href: "/products/operations",
     title: "عمليات التصنيع",
     desc: "العمليات المعيارية وتكلفتها",
-    ready: false,
+    ready: true,
   },
 ];
 

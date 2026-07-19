@@ -8,6 +8,19 @@ import { ProductsErrorCodes } from "../errors";
 import type { AttributeView } from "../types";
 import type { CreateAttributeInput, UpdateAttributeInput } from "./productsSchemas";
 
+/** قائمة السمات (§7). فحص صلاحية العرض. تُخفي المؤرشفة افتراضيًا. */
+export async function listAttributes(
+  actorUserId: string,
+  opts: { includeArchived?: boolean } = {}
+): Promise<AttributeView[]> {
+  await requirePermission(actorUserId, ProductsPermissions.viewAttributes);
+  return prisma.attribute.findMany({
+    where: opts.includeArchived ? {} : { archivedAt: null },
+    include: { values: { orderBy: { displayOrder: "asc" } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 /**
  * مكتبة السمات (تحليل §7). سمة "اختيار من قائمة" تتطلب قيمًا. الحذف ممنوع —
  * أرشفة فقط عبر archivedAt (قاعدة CLAUDE #16).

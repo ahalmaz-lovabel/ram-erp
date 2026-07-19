@@ -8,6 +8,18 @@ import { ProductsErrorCodes } from "../errors";
 import type { OperationView } from "../types";
 import type { CreateOperationInput, UpdateOperationInput } from "./productsSchemas";
 
+/** قائمة عمليات التصنيع (§10). فحص صلاحية العرض. تُخفي المؤرشفة افتراضيًا. */
+export async function listOperations(
+  actorUserId: string,
+  opts: { includeArchived?: boolean } = {}
+): Promise<OperationView[]> {
+  await requirePermission(actorUserId, ProductsPermissions.viewOperations);
+  return prisma.operation.findMany({
+    where: opts.includeArchived ? {} : { archivedAt: null },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 /**
  * مكتبة عمليات التصنيع (تحليل §10). عمليات معيارية قابلة لإعادة الاستخدام
  * تُطبَّق على مكوّنات المنتج لاحقًا. الحذف ممنوع — أرشفة فقط (archivedAt).
