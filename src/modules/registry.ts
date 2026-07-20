@@ -20,7 +20,7 @@ export const moduleRegistry: ModuleRegistryEntry[] = [
   { name: "customers", label: "العملاء والصفقات", status: "stable" },
   { name: "quotes", label: "عروض الأسعار", status: "in-progress" },
   { name: "invoices", label: "الفواتير والمدفوعات والاسترداد", status: "in-progress" },
-  { name: "accounting", label: "الحسابات والإدارة المالية", status: "planned" },
+  { name: "accounting", label: "الحسابات والإدارة المالية", status: "in-progress" },
   { name: "purchasing", label: "المشتريات والموردون", status: "planned" },
   { name: "production", label: "الإنتاج ومتابعة التصنيع", status: "planned" },
   { name: "shipping", label: "الطرود والشحن وملصقات الشحن", status: "planned" },
