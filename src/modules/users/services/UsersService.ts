@@ -62,6 +62,28 @@ async function loadActor(actorUserId: string): Promise<{ isSystemOwner: boolean 
   return actor;
 }
 
+/** قائمة المستخدمين للعرض (§6). فحص صلاحية العرض. */
+export async function listUsers(actorUserId: string): Promise<SafeUser[]> {
+  await requirePermission(actorUserId, UsersPermissions.viewUsers);
+  return prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: safeUserSelect,
+  });
+}
+
+/** بيانات مستخدم واحد للعرض (§6). فحص صلاحية العرض. */
+export async function getUser(actorUserId: string, targetUserId: string): Promise<SafeUser> {
+  await requirePermission(actorUserId, UsersPermissions.viewUsers);
+  const user = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: safeUserSelect,
+  });
+  if (!user) {
+    throw new AppError(CommonErrorCodes.NOT_FOUND, "المستخدم غير موجود", 404);
+  }
+  return user;
+}
+
 export async function createUser(actorUserId: string, input: CreateUserInput): Promise<SafeUser> {
   await requirePermission(actorUserId, UsersPermissions.createUser);
 

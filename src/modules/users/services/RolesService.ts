@@ -48,6 +48,29 @@ function assertPermissionsAreKnown(permissionKeys: string[]): void {
   }
 }
 
+/** قائمة الأدوار للعرض (§5). فحص صلاحية العرض. */
+export async function listRoles(actorUserId: string): Promise<RoleView[]> {
+  await requirePermission(actorUserId, UsersPermissions.viewRoles);
+  const roles = await prisma.role.findMany({
+    orderBy: [{ isSystem: "desc" }, { createdAt: "asc" }],
+    include: { permissions: true, _count: { select: { users: true } } },
+  });
+  return roles.map(toRoleView);
+}
+
+/** دور واحد للعرض/التعديل (§5). فحص صلاحية العرض. */
+export async function getRole(actorUserId: string, roleId: string): Promise<RoleView> {
+  await requirePermission(actorUserId, UsersPermissions.viewRoles);
+  const role = await prisma.role.findUnique({
+    where: { id: roleId },
+    include: { permissions: true, _count: { select: { users: true } } },
+  });
+  if (!role) {
+    throw new AppError(CommonErrorCodes.NOT_FOUND, "الدور غير موجود", 404);
+  }
+  return toRoleView(role);
+}
+
 export async function createRole(actorUserId: string, input: CreateRoleInput): Promise<RoleView> {
   await requirePermission(actorUserId, UsersPermissions.createRole);
 

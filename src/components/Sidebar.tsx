@@ -7,7 +7,7 @@ const nav: { href: string; label: string; ready: boolean }[] = [
   { href: "/dashboard", label: "لوحة التحكم", ready: true },
   { href: "/customers", label: "العملاء", ready: true },
   { href: "/products", label: "المنتجات", ready: true },
-  { href: "/users", label: "المستخدمون", ready: false },
+  { href: "/users", label: "المستخدمون", ready: true },
   { href: "/accounting", label: "الحسابات", ready: false },
   { href: "/invoices", label: "الفواتير", ready: false },
   { href: "/quotes", label: "عروض الأسعار", ready: false },
