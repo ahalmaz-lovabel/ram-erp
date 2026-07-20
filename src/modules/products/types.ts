@@ -18,6 +18,8 @@ export interface ProductView {
   name: string;
   status: ProductStatus;
   productionCost: Prisma.Decimal;
+  manualCost: Prisma.Decimal | null;
+  salePrice: Prisma.Decimal | null;
   costUpdatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
