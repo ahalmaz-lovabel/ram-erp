@@ -18,7 +18,7 @@ export const moduleRegistry: ModuleRegistryEntry[] = [
   { name: "users", label: "المستخدمون والأدوار والصلاحيات وسجل العمليات", status: "stable" },
   { name: "products", label: "المنتجات والخامات والسمات وتكلفة الإنتاج", status: "stable" },
   { name: "customers", label: "العملاء والصفقات", status: "stable" },
-  { name: "quotes", label: "عروض الأسعار", status: "planned" },
+  { name: "quotes", label: "عروض الأسعار", status: "in-progress" },
   { name: "invoices", label: "الفواتير والمدفوعات والاسترداد", status: "planned" },
   { name: "accounting", label: "الحسابات والإدارة المالية", status: "planned" },
   { name: "purchasing", label: "المشتريات والموردون", status: "planned" },

@@ -150,6 +150,8 @@ model User {
   sessions             Session[]
   responsibleCustomers Customer[]
   responsibleDeals     Deal[]
+  quotesCreated        Quote[]               @relation("QuoteCreatedBy")
+  quotesApproved       Quote[]               @relation("QuoteApprovedBy")
 
   @@index([roleId])
   @@index([status])
@@ -382,6 +384,7 @@ model Product {
   components   Component[]
   priceHistory ProductPriceHistory[]
   costHistory  ProductCostHistory[]
+  quoteLines   QuoteLine[]
 
   @@index([status])
 }
@@ -573,6 +576,7 @@ model Customer {
   contacts       CustomerContact[]
   deals          Deal[]
   communications CustomerCommunication[]
+  quotes         Quote[]
 
   @@index([status])
   @@index([type])
@@ -648,7 +652,93 @@ model Deal {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
+  quotes Quote[]
+
   @@index([customerId])
   @@index([status])
   @@index([responsibleUserId])
+}
+
+// ===== QUOTES =====
+// عروض الأسعار. مبني على تحليل العملاء §7 + تحليل المنتجات §16.
+// الحقول غير المذكورة صراحةً في التحليل موثّقة كافتراضات مؤقتة في
+// src/modules/quotes/README.md.
+
+enum QuoteStatus {
+  draft // مسودة
+  sent // مُرسل
+  underRevision // تحت التعديل
+  accepted // مقبول
+  rejected // مرفوض
+  expired // منتهي الصلاحية
+  converted // محوّل لأمر بيع/فاتورة
+  archived // مؤرشف (بدل الحذف — CLAUDE #16)
+}
+
+model Quote {
+  id                   String      @id @default(cuid())
+  quoteNumber          String      @unique // تسلسلي عبر sequenceGenerator (QUOTE-00001)
+  customerId           String
+  customer             Customer    @relation(fields: [customerId], references: [id])
+  customerNameSnapshot String // snapshot اسم العميل وقت الإنشاء (§7)
+  dealId               String? // العرض قد يُنشأ من صفقة (§7)
+  deal                 Deal?       @relation(fields: [dealId], references: [id])
+  status               QuoteStatus @default(draft)
+  issuedAt             DateTime? // وقت الإرسال (تجميد الـ snapshot)
+  validUntil           DateTime? // تاريخ انتهاء الصلاحية (افتراض موثّق)
+
+  // الإجماليات المالية (Decimal — CLAUDE #3). محسوبة في الخدمة.
+  subtotal        Decimal @default(0) // مجموع البنود بعد خصم البند
+  discountPercent Decimal @default(0) // خصم على مستوى العرض (افتراض موثّق)
+  discountAmount  Decimal @default(0)
+  taxPercent      Decimal @default(0) // ضريبة (افتراض موثّق — اختيارية)
+  taxAmount       Decimal @default(0)
+  grandTotal      Decimal @default(0)
+
+  notes String? // ملاحظات (افتراض موثّق)
+  terms String? // الشروط والأحكام (افتراض موثّق)
+
+  createdByUserId String
+  createdBy       User      @relation("QuoteCreatedBy", fields: [createdByUserId], references: [id])
+  approvedByUserId String?
+  approvedBy       User?     @relation("QuoteApprovedBy", fields: [approvedByUserId], references: [id])
+  approvedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines QuoteLine[]
+
+  @@index([customerId])
+  @@index([dealId])
+  @@index([status])
+  @@index([createdByUserId])
+}
+
+model QuoteLine {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  productId String? // مرجع المنتج (قد يُؤرشف لاحقًا — الـ snapshot يحفظ العرض)
+  product   Product? @relation(fields: [productId], references: [id])
+
+  // snapshot بيانات المنتج وقت الإضافة/الإصدار (§16).
+  productCodeSnapshot        String
+  productNameSnapshot        String
+  productDescriptionSnapshot String?
+  attributesSnapshot         Json? // السمات المختارة وقت الإصدار
+  warrantyMonthsSnapshot     Int?
+
+  quantity         Decimal @default(1)
+  unitPrice        Decimal // سعر الوحدة (يبدأ من سعر بيع المنتج، قابل للتعديل)
+  unitCostSnapshot Decimal @default(0) // تكلفة الوحدة snapshot (§16 — للهامش)
+  discountPercent  Decimal @default(0) // خصم البند
+  lineTotal        Decimal @default(0) // = quantity × unitPrice × (1 − discount%)
+
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([quoteId])
+  @@index([productId])
 }
