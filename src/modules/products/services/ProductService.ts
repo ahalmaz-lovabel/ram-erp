@@ -122,6 +122,35 @@ export async function recomputeProductsUsingMaterialTx(
   return affected.length;
 }
 
+/** قائمة المنتجات (§4). فحص صلاحية العرض. */
+export async function listProducts(actorUserId: string): Promise<ProductView[]> {
+  await requirePermission(actorUserId, ProductsPermissions.viewProducts);
+  return prisma.product.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
+}
+
+/** تفاصيل المنتج مع شجرة المكوّنات (خامات + عمليات لكل مكوّن). */
+export async function getProductDetail(actorUserId: string, productId: string) {
+  await requirePermission(actorUserId, ProductsPermissions.viewProducts);
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      components: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          materials: {
+            include: { material: { select: { code: true, name: true, baseUnit: true } } },
+          },
+          operations: { orderBy: { sortOrder: "asc" } },
+        },
+      },
+    },
+  });
+  if (!product) {
+    throw new AppError(CommonErrorCodes.NOT_FOUND, "المنتج غير موجود", 404);
+  }
+  return product;
+}
+
 export async function createProduct(
   actorUserId: string,
   input: { code: string; name: string }

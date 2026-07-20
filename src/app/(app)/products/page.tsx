@@ -13,7 +13,7 @@ const cards: { href: string; title: string; desc: string; ready: boolean }[] = [
     href: "/products/catalog",
     title: "المنتجات",
     desc: "الأجهزة والقطع وشجرة التكلفة",
-    ready: false,
+    ready: true,
   },
   {
     href: "/products/attributes",
