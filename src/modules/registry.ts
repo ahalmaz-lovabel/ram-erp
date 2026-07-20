@@ -16,8 +16,8 @@ export interface ModuleRegistryEntry {
 // بعد — يُضاف عند توفّر تحليله. الشحن مغطّى مبدئيًا كملحق ضمن المنتجات (§24).
 export const moduleRegistry: ModuleRegistryEntry[] = [
   { name: "users", label: "المستخدمون والأدوار والصلاحيات وسجل العمليات", status: "stable" },
-  { name: "products", label: "المنتجات والخامات والسمات وتكلفة الإنتاج", status: "in-progress" },
-  { name: "customers", label: "العملاء والصفقات", status: "in-progress" },
+  { name: "products", label: "المنتجات والخامات والسمات وتكلفة الإنتاج", status: "stable" },
+  { name: "customers", label: "العملاء والصفقات", status: "stable" },
   { name: "quotes", label: "عروض الأسعار", status: "planned" },
   { name: "invoices", label: "الفواتير والمدفوعات والاسترداد", status: "planned" },
   { name: "accounting", label: "الحسابات والإدارة المالية", status: "planned" },
