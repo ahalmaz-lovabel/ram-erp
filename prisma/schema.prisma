@@ -152,6 +152,8 @@ model User {
   responsibleDeals     Deal[]
   quotesCreated        Quote[]               @relation("QuoteCreatedBy")
   quotesApproved       Quote[]               @relation("QuoteApprovedBy")
+  invoicesCreated      Invoice[]             @relation("InvoiceCreatedBy")
+  paymentsReceived     Payment[]             @relation("PaymentReceivedBy")
 
   @@index([roleId])
   @@index([status])
@@ -385,6 +387,7 @@ model Product {
   priceHistory ProductPriceHistory[]
   costHistory  ProductCostHistory[]
   quoteLines   QuoteLine[]
+  invoiceLines InvoiceLine[]
 
   @@index([status])
 }
@@ -577,6 +580,7 @@ model Customer {
   deals          Deal[]
   communications CustomerCommunication[]
   quotes         Quote[]
+  invoices       Invoice[]
 
   @@index([status])
   @@index([type])
@@ -707,7 +711,8 @@ model Quote {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lines QuoteLine[]
+  lines   QuoteLine[]
+  invoice Invoice? // فاتورة ناتجة عن تحويل هذا العرض (1:1)
 
   @@index([customerId])
   @@index([dealId])
@@ -741,4 +746,110 @@ model QuoteLine {
 
   @@index([quoteId])
   @@index([productId])
+}
+
+// ===== INVOICES =====
+// الفواتير والدفعات. مبني على تحليل العملاء §8 + تحليل المنتجات §17.
+// كشف الحساب (§9) وخطة الاستحقاقات (§10) في موديول accounting لاحقًا.
+// الحقول غير المذكورة صراحةً موثّقة كافتراضات مؤقتة في
+// src/modules/invoices/README.md.
+
+enum InvoiceStatus {
+  unpaid // غير مدفوعة
+  partiallyPaid // مدفوعة جزئيًا
+  paid // مدفوعة بالكامل
+  overdue // متأخرة (يُحسب اشتقاقًا من dueDate — التحويل التلقائي مؤجّل)
+  cancelled // ملغاة
+}
+
+enum PaymentMethod {
+  cash // نقدًا
+  transfer // تحويل بنكي
+  card // بطاقة
+  cheque // شيك
+}
+
+model Invoice {
+  id                   String        @id @default(cuid())
+  invoiceNumber        String        @unique // تسلسلي عبر sequenceGenerator (INV-00001)
+  customerId           String
+  customer             Customer      @relation(fields: [customerId], references: [id])
+  customerNameSnapshot String // snapshot اسم العميل وقت الإصدار (§15)
+  sourceQuoteId        String?       @unique // العرض الذي حُوِّل لهذه الفاتورة (§17)
+  sourceQuote          Quote?        @relation(fields: [sourceQuoteId], references: [id])
+  status               InvoiceStatus @default(unpaid)
+  issuedAt             DateTime? // وقت الإصدار (تجميد الـ snapshot)
+  dueDate              DateTime? // تاريخ الاستحقاق (افتراض موثّق)
+
+  // الإجماليات المالية (Decimal — CLAUDE #3).
+  subtotal        Decimal @default(0)
+  discountPercent Decimal @default(0)
+  discountAmount  Decimal @default(0)
+  taxPercent      Decimal @default(0)
+  taxAmount       Decimal @default(0)
+  grandTotal      Decimal @default(0)
+  paidAmount      Decimal @default(0) // مجموع الدفعات (يُحدَّث مع كل دفعة)
+
+  notes String?
+  terms String?
+
+  createdByUserId String
+  createdBy       User   @relation("InvoiceCreatedBy", fields: [createdByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines    InvoiceLine[]
+  payments Payment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([createdByUserId])
+}
+
+model InvoiceLine {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  // snapshot بيانات المنتج وقت الإصدار (§17).
+  productCodeSnapshot        String
+  productNameSnapshot        String
+  productDescriptionSnapshot String?
+
+  quantity         Decimal @default(1)
+  unitPrice        Decimal
+  unitCostSnapshot Decimal @default(0) // تكلفة الوحدة وقت البيع (§17)
+  discountPercent  Decimal @default(0)
+  lineTotal        Decimal @default(0)
+
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([productId])
+}
+
+model Payment {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amount    Decimal
+  method    PaymentMethod
+  paidAt    DateTime // تاريخ الدفعة الفعلي (§8)
+  reference String? // رقم إيصال/تحويل/شيك (§8)
+  notes     String?
+
+  receivedByUserId String
+  receivedBy       User   @relation("PaymentReceivedBy", fields: [receivedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([paidAt])
 }

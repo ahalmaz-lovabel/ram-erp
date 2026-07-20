@@ -7,3 +7,4 @@ import "@/modules/users/register";
 import "@/modules/products/register";
 import "@/modules/customers/register";
 import "@/modules/quotes/register";
+import "@/modules/invoices/register";

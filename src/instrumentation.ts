@@ -8,5 +8,6 @@ export async function register() {
     await import("@/modules/products/register");
     await import("@/modules/customers/register");
     await import("@/modules/quotes/register");
+    await import("@/modules/invoices/register");
   }
 }
