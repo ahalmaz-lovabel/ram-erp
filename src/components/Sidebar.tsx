@@ -9,7 +9,7 @@ const nav: { href: string; label: string; ready: boolean }[] = [
   { href: "/products", label: "المنتجات", ready: true },
   { href: "/users", label: "المستخدمون", ready: true },
   { href: "/accounting", label: "الحسابات", ready: false },
-  { href: "/invoices", label: "الفواتير", ready: false },
+  { href: "/invoices", label: "الفواتير", ready: true },
   { href: "/quotes", label: "عروض الأسعار", ready: true },
   { href: "/shipping", label: "الشحن", ready: false },
   { href: "/production", label: "الإنتاج", ready: false },
