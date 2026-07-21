@@ -3,12 +3,17 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/modules/shared/auth/session";
 import { isAppError, CommonErrorCodes } from "@/modules/shared/errors/AppError";
 import { getCustomerProfile } from "@/modules/customers/services/CustomersService";
+import { listQuotes } from "@/modules/quotes/services/QuotesService";
+import { listInvoices } from "@/modules/invoices/services/InvoicesService";
 import {
   customerTypeLabel,
   customerStatusLabel,
   customerStatusBadge,
   communicationTypeLabel,
 } from "@/modules/customers/labels";
+import { quoteStatusLabel, quoteStatusBadge } from "@/modules/quotes/labels";
+import { invoiceStatusLabel, invoiceStatusBadge } from "@/modules/invoices/labels";
+import { isOverdue } from "@/modules/invoices/services/paymentStatus";
 import { CustomerActions } from "./CustomerActions";
 import { AddContactForm } from "./AddContactForm";
 import { AddDealForm } from "./AddDealForm";
@@ -28,6 +33,15 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
     if (isAppError(e) && e.code === CommonErrorCodes.NOT_FOUND) notFound();
     throw e;
   }
+
+  // عروض الأسعار والفواتير تُبنى في موديولاتها وتظهر هنا عبر ربط (تحليل §3، §7، §8).
+  // كل قائمة تُفحص بصلاحيتها الخاصة server-side؛ لو المستخدم لا يملكها نخفي القسم.
+  const denyToEmpty = (e: unknown) => {
+    if (isAppError(e) && e.code === CommonErrorCodes.PERMISSION_DENIED) return null;
+    throw e;
+  };
+  const quotes = await listQuotes(user.id, id).catch(denyToEmpty);
+  const invoices = await listInvoices(user.id, id).catch(denyToEmpty);
 
   const b = customerStatusBadge[customer.status];
   const info: [string, string | null][] = [
@@ -144,6 +158,82 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
           </div>
         )}
       </section>
+
+      {/* عروض الأسعار (§7 — تظهر عبر ربط بموديول quotes) */}
+      {quotes && (
+        <section className="rounded-xl border border-line bg-surface p-5">
+          <h2 className="mb-3 text-sm font-bold text-ink">عروض الأسعار ({quotes.length})</h2>
+          {quotes.length === 0 ? (
+            <p className="text-sm text-muted">لا توجد عروض أسعار لهذا العميل.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {quotes.map((q) => {
+                const badge = quoteStatusBadge[q.status];
+                return (
+                  <Link
+                    key={q.id}
+                    href={`/quotes/${q.id}`}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-line bg-white px-4 py-2.5 text-sm transition hover:border-brand"
+                  >
+                    <span className="font-mono text-ink" dir="ltr">
+                      {q.quoteNumber}
+                    </span>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      style={{ background: badge.bg, color: badge.color }}
+                    >
+                      {quoteStatusLabel[q.status]}
+                    </span>
+                    <span className="text-muted" dir="ltr">
+                      {q.grandTotal.toString()}
+                    </span>
+                    <span className="ms-auto text-xs text-brand">فتح ←</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* الفواتير (§8 — تظهر عبر ربط بموديول invoices) */}
+      {invoices && (
+        <section className="rounded-xl border border-line bg-surface p-5">
+          <h2 className="mb-3 text-sm font-bold text-ink">الفواتير ({invoices.length})</h2>
+          {invoices.length === 0 ? (
+            <p className="text-sm text-muted">لا توجد فواتير لهذا العميل.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {invoices.map((inv) => {
+                const overdue = isOverdue(inv.status, inv.dueDate);
+                const badge = overdue ? invoiceStatusBadge.overdue : invoiceStatusBadge[inv.status];
+                const label = overdue ? invoiceStatusLabel.overdue : invoiceStatusLabel[inv.status];
+                return (
+                  <Link
+                    key={inv.id}
+                    href={`/invoices/${inv.id}`}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-line bg-white px-4 py-2.5 text-sm transition hover:border-brand"
+                  >
+                    <span className="font-mono text-ink" dir="ltr">
+                      {inv.invoiceNumber}
+                    </span>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      style={{ background: badge.bg, color: badge.color }}
+                    >
+                      {label}
+                    </span>
+                    <span className="text-muted" dir="ltr">
+                      {inv.paidAmount.toString()} / {inv.grandTotal.toString()}
+                    </span>
+                    <span className="ms-auto text-xs text-brand">فتح ←</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* سجل التواصل والمتابعة (§14) */}
       <section className="rounded-xl border border-line bg-surface p-5">
