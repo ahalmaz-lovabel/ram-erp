@@ -9,10 +9,19 @@ import { CustomersErrorCodes } from "../errors";
 import type { CustomerView, CustomerStatus, CustomerType } from "../types";
 import type { CreateCustomerInput, UpdateCustomerInput } from "./customersSchemas";
 
-/** عنصر في قائمة العملاء (مع عدّادات جهات التواصل والصفقات). */
+/**
+ * عنصر في قائمة العملاء (§2): جهة التواصل الأساسية، عدّادات، والملخّص المالي
+ * (إجمالي الفواتير/المدفوع/المتبقّي) وآخر تعامل. الملخّص المالي جزء من عرض
+ * العميل (صلاحية viewCustomers)، مبني على فواتير غير الملغاة.
+ */
 export type CustomerListItem = CustomerView & {
   contactsCount: number;
   dealsCount: number;
+  primaryContactName: string | null;
+  totalInvoiced: Prisma.Decimal;
+  totalPaid: Prisma.Decimal;
+  balance: Prisma.Decimal;
+  lastInteractionAt: Date | null;
 };
 
 /**
@@ -42,14 +51,56 @@ export async function listCustomers(
     where,
     orderBy: { createdAt: "desc" },
     take: 200,
-    include: { _count: { select: { contacts: true, deals: true } } },
+    include: {
+      _count: { select: { contacts: true, deals: true } },
+      // جهة التواصل الأساسية للعرض في الجدول (§2).
+      contacts: { where: { isPrimary: true }, take: 1, select: { name: true } },
+    },
   });
 
-  return rows.map((r) => ({
-    ...r,
-    contactsCount: r._count.contacts,
-    dealsCount: r._count.deals,
-  }));
+  const ids = rows.map((r) => r.id);
+  const zero = new Prisma.Decimal(0);
+
+  // الملخّص المالي (§2): إجمالي الفواتير والمدفوع لكل عميل من الفواتير غير
+  // الملغاة، وآخر متابعة من سجل التواصل. تجميع دفعة واحدة تفاديًا لاستعلام لكل صف.
+  const [invoiceAgg, lastComm] = ids.length
+    ? await Promise.all([
+        prisma.invoice.groupBy({
+          by: ["customerId"],
+          where: { customerId: { in: ids }, status: { not: "cancelled" } },
+          _sum: { grandTotal: true, paidAmount: true },
+        }),
+        prisma.customerCommunication.groupBy({
+          by: ["customerId"],
+          where: { customerId: { in: ids } },
+          _max: { createdAt: true },
+        }),
+      ])
+    : [[], []];
+
+  const financeByCustomer = new Map(
+    invoiceAgg.map((a) => [
+      a.customerId,
+      { invoiced: a._sum.grandTotal ?? zero, paid: a._sum.paidAmount ?? zero },
+    ])
+  );
+  const lastCommByCustomer = new Map(lastComm.map((c) => [c.customerId, c._max.createdAt ?? null]));
+
+  return rows.map(({ _count, contacts, ...r }) => {
+    const fin = financeByCustomer.get(r.id);
+    const totalInvoiced = fin?.invoiced ?? zero;
+    const totalPaid = fin?.paid ?? zero;
+    return {
+      ...r,
+      contactsCount: _count.contacts,
+      dealsCount: _count.deals,
+      primaryContactName: contacts[0]?.name ?? null,
+      totalInvoiced,
+      totalPaid,
+      balance: totalInvoiced.minus(totalPaid),
+      lastInteractionAt: lastCommByCustomer.get(r.id) ?? null,
+    };
+  });
 }
 
 /** ملف العميل الكامل: بياناته + جهات التواصل + الصفقات (§3). */
