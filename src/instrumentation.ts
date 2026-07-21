@@ -10,5 +10,6 @@ export async function register() {
     await import("@/modules/quotes/register");
     await import("@/modules/invoices/register");
     await import("@/modules/accounting/register");
+    await import("@/modules/purchasing/register");
   }
 }

@@ -9,3 +9,4 @@ import "@/modules/customers/register";
 import "@/modules/quotes/register";
 import "@/modules/invoices/register";
 import "@/modules/accounting/register";
+import "@/modules/purchasing/register";
