@@ -154,6 +154,8 @@ model User {
   quotesApproved       Quote[]               @relation("QuoteApprovedBy")
   invoicesCreated      Invoice[]             @relation("InvoiceCreatedBy")
   paymentsReceived     Payment[]             @relation("PaymentReceivedBy")
+  purchaseOrdersCreated PurchaseOrder[]      @relation("POCreatedBy")
+  supplierPaymentsMade  SupplierPayment[]    @relation("SupplierPaymentBy")
 
   @@index([roleId])
   @@index([status])
@@ -266,8 +268,9 @@ model Material {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  priceHistory MaterialPriceHistory[]
-  bomItems     ComponentMaterial[]
+  priceHistory       MaterialPriceHistory[]
+  bomItems           ComponentMaterial[]
+  purchaseOrderLines PurchaseOrderLine[]
 
   @@index([status])
   @@index([category])
@@ -391,6 +394,9 @@ model Product {
 
   @@index([status])
 }
+
+// ملاحظة: بنود أوامر الشراء تشير إلى Material (الخامات) — العلاقة العكسية
+// معرّفة في نموذج Material أدناه (purchaseOrderLines).
 
 // سجل تعديل سعر البيع (§13).
 model ProductPriceHistory {
@@ -851,5 +857,123 @@ model Payment {
   createdAt DateTime @default(now())
 
   @@index([invoiceId])
+  @@index([paidAt])
+}
+
+// ===== PURCHASING =====
+// المشتريات والموردون. ⚠️ لا يوجد تحليل معتمد — النموذج بالكامل افتراضات
+// مؤقتة موثّقة في src/modules/purchasing/README.md (بموافقة صريحة).
+
+enum SupplierStatus {
+  active // نشط
+  suspended // موقوف
+  archived // مؤرشف
+}
+
+enum PurchaseOrderStatus {
+  draft // مسودة (قابلة للتعديل)
+  sent // مُرسل للمورد
+  received // تم الاستلام
+  cancelled // ملغى
+}
+
+model Supplier {
+  id            String         @id @default(cuid())
+  code          String         @unique // كود المورد (فريد)
+  name          String
+  phone         String?
+  whatsapp      String?
+  email         String?
+  address       String?
+  contactPerson String? // مسؤول التواصل
+  taxNumber     String? // الرقم الضريبي
+  notes         String?
+  status        SupplierStatus @default(active)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+
+  @@index([status])
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(cuid())
+  poNumber             String              @unique // تسلسلي (PO-00001)
+  supplierId           String
+  supplier             Supplier            @relation(fields: [supplierId], references: [id])
+  supplierNameSnapshot String // snapshot اسم المورد وقت الإنشاء
+  status               PurchaseOrderStatus @default(draft)
+  orderDate            DateTime            @default(now())
+  expectedDate         DateTime? // تاريخ التوريد المتوقّع
+  receivedAt           DateTime? // وقت الاستلام الفعلي
+
+  // الإجماليات المالية (Decimal — CLAUDE #3).
+  subtotal        Decimal @default(0)
+  discountPercent Decimal @default(0)
+  discountAmount  Decimal @default(0)
+  taxPercent      Decimal @default(0)
+  taxAmount       Decimal @default(0)
+  grandTotal      Decimal @default(0)
+  paidAmount      Decimal @default(0) // مجموع المدفوع للمورد
+
+  notes String?
+  terms String?
+
+  createdByUserId String
+  createdBy       User   @relation("POCreatedBy", fields: [createdByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines    PurchaseOrderLine[]
+  payments SupplierPayment[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdByUserId])
+}
+
+model PurchaseOrderLine {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  materialId String?
+  material   Material? @relation(fields: [materialId], references: [id])
+
+  // snapshot بيانات الخامة وقت الإضافة.
+  materialCodeSnapshot String
+  materialNameSnapshot String
+
+  quantity  Decimal         @default(1)
+  unit      MeasurementUnit
+  unitPrice Decimal
+  lineTotal Decimal         @default(0)
+
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([materialId])
+}
+
+model SupplierPayment {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  amount    Decimal
+  method    PaymentMethod
+  paidAt    DateTime
+  reference String?
+  notes     String?
+
+  paidByUserId String
+  paidBy       User   @relation("SupplierPaymentBy", fields: [paidByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
   @@index([paidAt])
 }

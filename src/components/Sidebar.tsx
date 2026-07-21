@@ -11,6 +11,7 @@ const nav: { href: string; label: string; ready: boolean }[] = [
   { href: "/accounting", label: "الحسابات", ready: true },
   { href: "/invoices", label: "الفواتير", ready: true },
   { href: "/quotes", label: "عروض الأسعار", ready: true },
+  { href: "/purchasing", label: "المشتريات", ready: true },
   { href: "/shipping", label: "الشحن", ready: false },
   { href: "/production", label: "الإنتاج", ready: false },
 ];
