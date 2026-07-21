@@ -9,6 +9,7 @@ import {
   customerStatusLabel,
   customerStatusBadge,
 } from "@/modules/customers/labels";
+import { CustomerRowActions } from "./CustomerRowActions";
 
 export default async function CustomersPage({
   searchParams,
@@ -100,16 +101,18 @@ export default async function CustomersPage({
                   <th className="px-4 py-3 font-semibold">الكود</th>
                   <th className="px-4 py-3 font-semibold">الاسم</th>
                   <th className="px-4 py-3 font-semibold">النوع</th>
-                  <th className="px-4 py-3 font-semibold">الحالة</th>
-                  <th className="px-4 py-3 font-semibold">الهاتف</th>
+                  <th className="px-4 py-3 font-semibold">جهة التواصل</th>
+                  <th className="px-4 py-3 font-semibold">هاتف / واتساب</th>
                   <th className="px-4 py-3 font-semibold">المدينة</th>
+                  <th className="px-4 py-3 font-semibold">الحالة</th>
                   <th className="px-4 py-3 font-semibold">صفقات</th>
+                  <th className="px-4 py-3 font-semibold text-left">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {customers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-muted">
+                    <td colSpan={9} className="px-4 py-10 text-center text-muted">
                       لا يوجد عملاء بعد — ابدأ بإضافة عميل.
                     </td>
                   </tr>
@@ -128,6 +131,11 @@ export default async function CustomersPage({
                           </Link>
                         </td>
                         <td className="px-4 py-3 text-muted">{customerTypeLabel[c.type]}</td>
+                        <td className="px-4 py-3 text-muted">{c.primaryContactName ?? "—"}</td>
+                        <td className="px-4 py-3 text-muted" dir="ltr">
+                          {c.phone ?? c.whatsapp ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted">{c.city ?? "—"}</td>
                         <td className="px-4 py-3">
                           <span
                             className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -136,11 +144,13 @@ export default async function CustomersPage({
                             {customerStatusLabel[c.status]}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-muted" dir="ltr">
-                          {c.phone ?? "—"}
-                        </td>
-                        <td className="px-4 py-3 text-muted">{c.city ?? "—"}</td>
                         <td className="px-4 py-3 text-muted">{c.dealsCount}</td>
+                        <td className="px-4 py-3">
+                          <CustomerRowActions
+                            customerId={c.id}
+                            archived={c.status === "archived"}
+                          />
+                        </td>
                       </tr>
                     );
                   })

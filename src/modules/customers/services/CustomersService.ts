@@ -9,10 +9,11 @@ import { CustomersErrorCodes } from "../errors";
 import type { CustomerView, CustomerStatus, CustomerType } from "../types";
 import type { CreateCustomerInput, UpdateCustomerInput } from "./customersSchemas";
 
-/** عنصر في قائمة العملاء (مع عدّادات جهات التواصل والصفقات). */
+/** عنصر في قائمة العملاء (مع جهة التواصل الأساسية وعدّادات التواصل والصفقات). */
 export type CustomerListItem = CustomerView & {
   contactsCount: number;
   dealsCount: number;
+  primaryContactName: string | null;
 };
 
 /**
@@ -42,13 +43,18 @@ export async function listCustomers(
     where,
     orderBy: { createdAt: "desc" },
     take: 200,
-    include: { _count: { select: { contacts: true, deals: true } } },
+    include: {
+      _count: { select: { contacts: true, deals: true } },
+      // جهة التواصل الأساسية للعرض في الجدول (§2).
+      contacts: { where: { isPrimary: true }, take: 1, select: { name: true } },
+    },
   });
 
-  return rows.map((r) => ({
+  return rows.map(({ _count, contacts, ...r }) => ({
     ...r,
-    contactsCount: r._count.contacts,
-    dealsCount: r._count.deals,
+    contactsCount: _count.contacts,
+    dealsCount: _count.deals,
+    primaryContactName: contacts[0]?.name ?? null,
   }));
 }
 
