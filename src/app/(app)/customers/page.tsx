@@ -94,8 +94,8 @@ export default async function CustomersPage({
             </button>
           </form>
 
-          <div className="overflow-hidden rounded-xl border border-line bg-surface">
-            <table className="w-full text-right text-sm">
+          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+            <table className="w-full min-w-[1100px] text-right text-sm">
               <thead className="border-b border-line bg-canvas text-xs text-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">الكود</th>
@@ -105,14 +105,16 @@ export default async function CustomersPage({
                   <th className="px-4 py-3 font-semibold">هاتف / واتساب</th>
                   <th className="px-4 py-3 font-semibold">المدينة</th>
                   <th className="px-4 py-3 font-semibold">الحالة</th>
-                  <th className="px-4 py-3 font-semibold">صفقات</th>
+                  <th className="px-4 py-3 font-semibold">الفواتير (مدفوع/إجمالي)</th>
+                  <th className="px-4 py-3 font-semibold">المتبقّي</th>
+                  <th className="px-4 py-3 font-semibold">آخر تعامل</th>
                   <th className="px-4 py-3 font-semibold text-left">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {customers.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-muted">
+                    <td colSpan={11} className="px-4 py-10 text-center text-muted">
                       لا يوجد عملاء بعد — ابدأ بإضافة عميل.
                     </td>
                   </tr>
@@ -144,7 +146,28 @@ export default async function CustomersPage({
                             {customerStatusLabel[c.status]}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-muted">{c.dealsCount}</td>
+                        <td className="px-4 py-3 text-muted" dir="ltr">
+                          {c.totalInvoiced.gt(0) ? (
+                            <span>
+                              {c.totalPaid.toString()} / {c.totalInvoiced.toString()}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td
+                          className={`px-4 py-3 font-semibold ${
+                            c.balance.gt(0) ? "text-red-600" : "text-ink"
+                          }`}
+                          dir="ltr"
+                        >
+                          {c.balance.gt(0) ? c.balance.toString() : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-muted" dir="ltr">
+                          {c.lastInteractionAt
+                            ? new Date(c.lastInteractionAt).toLocaleDateString("ar-EG")
+                            : "—"}
+                        </td>
                         <td className="px-4 py-3">
                           <CustomerRowActions
                             customerId={c.id}
